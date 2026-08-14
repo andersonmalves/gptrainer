@@ -8,6 +8,10 @@ This package is a practice protocol and an optional diary. It is not a psychomet
 
 Compatible with Claude Code and Codex.
 
+## Why the name
+
+A [code kata](http://codekata.com/) is a short exercise you repeat yourself so the skill sticks — the programming analogue of a martial-arts form. Dave Thomas brought the term into software for deliberate practice, not for shipping a feature. This skill uses that meaning: you attempt the reasoning; the coach withholds the solution. The name is also vendor-neutral. It does not train a model, and it is not a Claude or GPT product. These katas target engineering reasoning (debugging, invariants, design), not puzzle drills.
+
 ## How a session works
 
 The coach does not implement the core answer. It waits for an observable attempt, releases one hint rung at a time, asks for confidence before revealing correctness, and then re-tests the same idea on a changed surface with hints removed. The detailed protocol is in [references/session-protocol.md](references/session-protocol.md). The studies behind each step, and the limits of those studies, are in [references/evidence.md](references/evidence.md).
