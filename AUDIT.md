@@ -152,6 +152,4 @@ Ver `tests/` e o diff de `scripts/progress.py`.
 7. **Definição de `independent` alinhada** (achado 5) — `rubric.md` e `HINT_RANGE_BY_OUTCOME` passaram a exigir nível 0; a faixa de `lightly_assisted` absorveu o nível 1.
 8. **Higiene de repositório** — `README.md` com o escopo honesto do que a skill não estabelece, `.gitignore`, e workflow de CI rodando a suíte em Python 3.9 e 3.14.
 
-## Deferido — exige decisão
-
-- `LICENSE`: escolha do autor, não derivável do repositório.
+Nenhum achado permanece em aberto. `LICENSE` (MIT) foi definida pelo autor após a auditoria.

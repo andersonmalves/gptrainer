@@ -56,3 +56,7 @@ python3 -m unittest discover -s tests
 ```
 
 Requires Python 3.9 or newer; verified on 3.9 and 3.14. The Java, Kotlin and TypeScript runner paths are exercised only when their toolchains are installed.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
