@@ -7,6 +7,7 @@ import argparse
 import json
 import math
 import re
+import statistics
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -48,6 +49,19 @@ VALID_EVALUATORS = {"coach", "independent"}
 VALID_EVALUATOR_CONTEXTS = {"coaching", "isolated"}
 VALID_OBJECTIVES = {"recover", "prevent_decline", "improve_baseline"}
 
+UNAIDED_POLICIES = {"strict_unaided", "standard_unaided"}
+ASSISTED_POLICIES = VALID_ASSISTANCE - UNAIDED_POLICIES
+UNAIDED_PHASES = VALID_PHASES - {"practice"}
+
+# rubric.md defines each outcome by the highest conceptual hint that preceded it.
+HINT_RANGE_BY_OUTCOME = {
+    "independent": (0, 1),
+    "lightly_assisted": (2, 3),
+    "heavily_assisted": (4, 5),
+    "walked_through": (6, 6),
+    "incomplete": (0, 5),
+}
+
 
 def empty_state() -> dict[str, Any]:
     return {"schema_version": SCHEMA_VERSION, "program": None, "sessions": [], "cards": []}
@@ -62,6 +76,23 @@ def normalize_session(session: dict[str, Any]) -> dict[str, Any]:
     normalized.setdefault("evaluator_context", "coaching")
     normalized.setdefault("package_id", "")
     normalized.setdefault("policy_deviations", "")
+    return normalized
+
+
+def normalize_card(card: dict[str, Any]) -> dict[str, Any]:
+    """Fill scheduler fields a card may lack so read-only commands cannot crash."""
+    for key in ("id", "due"):
+        if not card.get(key):
+            raise SystemExit(f"Card is missing required field '{key}': {card}")
+    normalized = dict(card)
+    normalized.setdefault("topic", normalized["id"])
+    normalized.setdefault("stability_days", 1.0)
+    normalized.setdefault("difficulty", 5.0)
+    normalized.setdefault("last_review", None)
+    normalized.setdefault("reviews", 0)
+    normalized.setdefault("lapses", 0)
+    normalized.setdefault("last_confidence", None)
+    normalized.setdefault("calibration", "unknown")
     return normalized
 
 
@@ -125,13 +156,14 @@ def load_state(path: Path, allow_missing: bool = False) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError) as exc:
         raise SystemExit(f"Could not read valid JSON from {path}: {exc}") from exc
     if data.get("schema_version") == 1 and isinstance(data.get("sessions"), list):
-        return migrate_v1(data)
-    if data.get("schema_version") == 2 and isinstance(data.get("sessions"), list):
-        return migrate_v2(data)
-    if data.get("schema_version") != SCHEMA_VERSION:
+        data = migrate_v1(data)
+    elif data.get("schema_version") == 2 and isinstance(data.get("sessions"), list):
+        data = migrate_v2(data)
+    elif data.get("schema_version") != SCHEMA_VERSION:
         raise SystemExit(f"Unsupported state schema in {path}")
     if not isinstance(data.get("sessions"), list) or not isinstance(data.get("cards"), list):
         raise SystemExit(f"Invalid state structure in {path}")
+    data["cards"] = [normalize_card(card) for card in data["cards"]]
     data.setdefault("program", None)
     return data
 
@@ -233,6 +265,28 @@ def validate_score(name: str, value: int, minimum: int, maximum: int) -> None:
         raise SystemExit(f"--{name} must be between {minimum} and {maximum}")
 
 
+def validate_consistency(
+    outcome: str, initial_result: str, hints: int, assistance: str, phase: str
+) -> None:
+    """Reject sessions whose fields contradict rubric.md and assistance-policy.md."""
+    low, high = HINT_RANGE_BY_OUTCOME[outcome]
+    if not low <= hints <= high:
+        raise SystemExit(
+            f"outcome {outcome} requires --hints between {low} and {high} (rubric.md)"
+        )
+    if outcome == "independent" and initial_result != "correct":
+        raise SystemExit("outcome independent requires --initial-result correct (rubric.md)")
+    if outcome == "incomplete" and initial_result == "correct":
+        raise SystemExit("outcome incomplete cannot pair with --initial-result correct")
+    if assistance in UNAIDED_POLICIES and hints > 0:
+        raise SystemExit(
+            f"assistance {assistance} forbids conceptual hints; use --hints 0 "
+            "(assistance-policy.md)"
+        )
+    if phase in UNAIDED_PHASES and assistance not in UNAIDED_POLICIES:
+        raise SystemExit(f"phase {phase} must use an unaided assistance policy")
+
+
 def cmd_init(args: argparse.Namespace) -> None:
     if args.state.exists() and not args.force:
         raise SystemExit(f"State file already exists: {args.state}; use --force to replace it")
@@ -278,9 +332,9 @@ def cmd_record(args: argparse.Namespace) -> None:
         raise SystemExit("independent evaluator requires --evaluator-context isolated")
     if args.evaluator == "independent" and not args.package_id:
         raise SystemExit("independent evaluator requires --package-id for the frozen challenge")
-    if args.phase in {"baseline", "immediate_transfer", "retention_7d", "retention_21d", "final"}:
-        if args.assistance not in {"strict_unaided", "standard_unaided"}:
-            raise SystemExit(f"phase {args.phase} must use an unaided assistance policy")
+    validate_consistency(
+        args.outcome, args.initial_result, args.hints, args.assistance, args.phase
+    )
 
     session_day = args.date or date.today()
     concept_id = args.concept_id or slugify(args.topic)
@@ -365,6 +419,14 @@ def cmd_due(args: argparse.Namespace) -> None:
         )
 
 
+def distribution(items: list[dict[str, Any]], field: str) -> str:
+    values = [int(item.get(field, 0)) for item in items]
+    return (
+        f"n={len(values)} median={statistics.median(values):.1f} "
+        f"range={min(values)}-{max(values)}"
+    )
+
+
 def cmd_status(args: argparse.Namespace) -> None:
     data = load_state(args.state)
     sessions = data["sessions"]
@@ -378,32 +440,36 @@ def cmd_status(args: argparse.Namespace) -> None:
             f"baseline={program['baseline_policy']}"
         )
     if sessions:
-        independent = sum(item.get("outcome") == "independent" for item in sessions)
-        transfers = [int(item.get("transfer", 0)) for item in sessions]
-        hints = [int(item.get("highest_hint", 0)) for item in sessions]
+        # longitudinal-evaluation.md forbids pooling assisted and unaided attempts.
+        for label, policies in (("Unaided", UNAIDED_POLICIES), ("Assisted", ASSISTED_POLICIES)):
+            items = [item for item in sessions if item.get("assistance") in policies]
+            if not items:
+                continue
+            independent = sum(item.get("outcome") == "independent" for item in items)
+            print(f"{label} sessions: {len(items)} (independent outcomes: {independent})")
+            print(f"  Transfer 0-4:     {distribution(items, 'transfer')}")
+            print(f"  Explain-back 0-4: {distribution(items, 'explain_back')}")
+            print(f"  Highest hint 0-6: {distribution(items, 'highest_hint')}")
         calibrated = [item.get("confidence_calibration") for item in sessions]
-        print(f"Independent outcomes: {independent}/{len(sessions)}")
-        print(f"Average highest hint: {sum(hints) / len(hints):.2f}/6")
-        print(f"Average immediate transfer: {sum(transfers) / len(transfers):.2f}/4")
         print(f"Confident-wrong attempts: {calibrated.count('confident_wrong')}")
         print(f"Uncertain-correct attempts: {calibrated.count('uncertain_correct')}")
         deviations = sum(bool(item.get("policy_deviations")) for item in sessions)
         print(f"Sessions with policy deviations: {deviations}")
         for phase in sorted({str(item.get("phase", "practice")) for item in sessions}):
             items = [item for item in sessions if item.get("phase", "practice") == phase]
-            average_transfer = sum(int(item.get("transfer", 0)) for item in items) / len(items)
             independent_evals = sum(item.get("evaluator") == "independent" for item in items)
             print(
-                f"Phase {phase}: n={len(items)} transfer={average_transfer:.2f}/4 "
+                f"Phase {phase}: transfer {distribution(items, 'transfer')} "
                 f"independent_evals={independent_evals}"
             )
         for capability in sorted({str(item.get("capability", "unclassified")) for item in sessions}):
             items = [item for item in sessions if item.get("capability", "unclassified") == capability]
-            average_transfer = sum(int(item.get("transfer", 0)) for item in items) / len(items)
-            print(f"Capability {capability}: n={len(items)} transfer={average_transfer:.2f}/4")
+            # capability-model.md requires at least two tasks before reading a weakness.
+            note = "" if len(items) >= 2 else "  [insufficient: <2 tasks]"
+            print(f"Capability {capability}: transfer {distribution(items, 'transfer')}{note}")
     if cards:
-        average_stability = sum(float(card["stability_days"]) for card in cards) / len(cards)
-        print(f"Average stability: {average_stability:.2f} days")
+        stabilities = [float(card["stability_days"]) for card in cards]
+        print(f"Median stability: {statistics.median(stabilities):.2f} days")
 
 
 def build_parser() -> argparse.ArgumentParser:

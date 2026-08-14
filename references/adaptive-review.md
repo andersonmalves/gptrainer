@@ -73,4 +73,6 @@ python scripts/progress.py review --state .coding-reasoning/progress.json \
   --concept-id payment-idempotency-race --recall good --confidence 3
 ```
 
+`record` rejects internally inconsistent sessions: the hint level must match the outcome band in [rubric.md](rubric.md), `independent` requires a correct first answer, and an unaided policy or phase forbids conceptual hints. Fix the field that is wrong rather than relabelling the session to satisfy the command.
+
 When a version-1 state file is read, the script migrates its sessions in memory and creates conservative concept cards. Version-2 files retain their cards and receive explicit program/evaluation metadata defaults. The next writing command saves schema version 3.
