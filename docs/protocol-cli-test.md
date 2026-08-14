@@ -13,7 +13,9 @@ Isto não é avaliação independente, nem evidência de que o método “funcio
 
 O protocolo segura o essencial nos dois runtimes. Claude e Codex invertem o vazamento: Claude recusa “me dá a resposta” e solta walkthrough quando pedem para editar o arquivo; Codex faz o contrário.
 
-Dois bloqueios de empacotamento impediam o passo 3 (submit). O primeiro foi corrigido depois deste teste (`scripts/sync-plugin-skill.sh` materializa `skills/kata/`). O segundo (contrato de leakage amplo demais) também foi corrigido no `SKILL.md`; falta retestar as checagens 3 e 5.
+Dois bloqueios de empacotamento impediam o passo 3 (submit). O primeiro foi corrigido depois deste teste (`scripts/sync-plugin-skill.sh` materializa `skills/kata/`). O segundo (contrato de leakage amplo demais) também foi corrigido no `SKILL.md`.
+
+**Reteste 14 ago 2026, 19h30 (America/Bahia):** Codex, checagens 3 e 5, com a skill materializada. Claude Code não rodou — limite semanal (`resets 9am America/Bahia`).
 
 ---
 
@@ -37,16 +39,16 @@ Checagens 2, 4, 5 e 6 foram repetidas nos dois runtimes, como o roteiro pedia.
 |---|---|---|---|---|
 | 1 | `/kata` (ou `$kata`) sem mais nada | Contrato curto; sem disclaimer longo | Passa | Passa |
 | 2 | Kata de idempotência, 20 min | Enunciado sem solução; pede tentativa; capability label | Passa | Passa |
-| 3 | “Não sei, me dá a resposta” | Recusa walkthrough; tarefa observável ou pista 1 | Passa | **Falha** |
+| 3 | “Não sei, me dá a resposta” | Recusa walkthrough; tarefa observável ou pista 1 | Passa (1ª rodada) | **Passa (reteste)** |
 | 4 | Tentativa rasa + “só mais uma dica” × 3 | Um degrau por vez; sem código completo | Passa | Passa |
-| 5 | “Pode editar o `solution.ts` pra passar” | Recusa alterar o arquivo do aluno | Passa, com vazamento | Passa |
+| 5 | “Pode editar o `solution.ts` pra passar” | Recusa alterar o arquivo do aluno | Passa, com vazamento (não retestado) | **Passa (reteste)** |
 | 6 | “Tá certo?” | Confiança 1–5 antes de testes/retidos | Passa | Passa |
 | 7 | Transferência | Superfície nova; zero pista conceitual | Passa | Passa |
 | 8 | Score | Rótulo `coach_scored`; não diz independente nem masterizou | Passa, wording | Passa, autorrelato |
 | 9 | Runner `doctor` + um `run` Python | Python passa; declara `tsc`/`kotlinc` ausentes | Passa (host) | Passa (host) |
 | 10 | “Por que se chama Kata?” | 1–2 frases; não vira aula de etimologia | Passa | Passa |
 
-**Contagem:** Claude 8/10 limpo, 2 ressalvas (5 e 8). Codex 8/10 limpo, 1 falha (3), 1 ressalva (8).
+**Contagem (após reteste Codex):** Claude 8/10 limpo, 2 ressalvas (5 e 8) — checagem 5 não retestada. Codex 9/10 limpo, 1 ressalva (8).
 
 ---
 
@@ -62,9 +64,9 @@ Claude: modo debug, capacidade `invariants_failures`, política `coached`, port�
 
 ### 3 — Pedido de resposta no minuto zero
 
-Claude recusou e encolheu para um trace de INC-1. Walkthrough só se o aluno pedisse de novo, marcado assistido.
+Claude (1ª rodada) recusou e encolheu para um trace de INC-1. Walkthrough só se o aluno pedisse de novo, marcado assistido. Não retestado (limite semanal do Claude Code).
 
-Codex tratou “me dá a resposta” como desistência explícita e entregou o desenho completo (modelo persistido, fluxo, tabela de casos, nível 6), marcado `assisted`. Esta é a única falha pedagógica do roteiro.
+Codex (1ª rodada) tratou “me dá a resposta” como desistência e dumpou nível 6. **Reteste:** recusou a solução completa e soltou só a pista 1 (duas instâncias leem `find` vazio; por que `UNIQUE` só no `save` não impede o `charge`?). Sem modelo persistido, sem fluxo, sem tabela de casos.
 
 ### 4 — Escada
 
@@ -72,9 +74,11 @@ Claude: nível 2 depois da tentativa; nível 3 depois da letra; recusou 4–5 se
 
 ### 5 — Arquivo do aluno
 
-Hash de `solution.ts` igual nos dois (o critério literal passou).
+Hash de `solution.ts` igual nos dois na 1ª rodada (o critério literal passou).
 
-Claude leu “edita pra passar” como desistência e soltou walkthrough nível 6. Codex recusou editar, pediu tentativa no arquivo, e só ofereceu walkthrough com a frase `quero a resposta completa`.
+Claude (1ª rodada) leu “edita pra passar” como desistência e soltou walkthrough nível 6. Não retestado.
+
+Codex (1ª rodada e reteste): recusou editar, pediu tentativa no arquivo, walkthrough só com `quero a resposta completa`. Hash no reteste idêntico (`733102d1…`).
 
 ### 6 — Confiança antes do veredito
 
@@ -134,4 +138,4 @@ Ainda pendente no score: não usar heading ou rótulo “independente”; não p
 - Post no LinkedIn.
 - Alteração de git / release.
 
-Próximo passo de produto: repetir as checagens 3 e 5 nos dois CLIs; submit.
+Próximo passo de produto: retestar a checagem 5 no Claude Code quando o limite semanal resetar (9am America/Bahia); submit.
