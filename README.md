@@ -64,17 +64,20 @@ The multiweek evaluation protocol and the four-role separation live in [referenc
 | Path | Contents |
 |---|---|
 | `SKILL.md` | Canonical skill: contract, capability targets, modes, hint ladder, leakage rules |
-| `skills/kata/` | Codex skill layout; symlinks to the canonical `SKILL.md`, `references/`, `scripts/`, `assets/`, and `agents/openai.yaml` |
+| `skills/kata/` | Plugin skill layout; real files synced from the canonical root via `scripts/sync-plugin-skill.sh` |
 | `.claude-plugin/plugin.json` | Claude Code plugin manifest |
 | `.claude-plugin/marketplace.json` | Claude Code marketplace catalog for this repository |
 | `.codex-plugin/plugin.json` | Codex / ChatGPT plugin manifest |
 | `.agents/plugins/marketplace.json` | Codex marketplace catalog for this repository |
 | `references/` | Protocols loaded on demand — session flow, rubric, assistance policies, challenge design, review |
 | `references/deferred/` | Drafted protocols that are backlog, not current capability |
+| `scripts/sync-plugin-skill.sh` | Copies canonical root files into `skills/kata/` as real files |
 | `scripts/runner.py` | Deterministic test runner for Python, TypeScript, Java, Kotlin |
 | `scripts/progress.py` | Optional practice log with a local interval heuristic |
 | `agents/openai.yaml` | Interface metadata; implicit invocation is off |
-| `tests/` | Test suite for both scripts |
+| `tests/` | Test suite for the scripts and the plugin skill layout |
+
+After editing a canonical file (`SKILL.md`, `references/`, `scripts/runner.py`, `scripts/progress.py`, `assets/`, or `agents/openai.yaml`), run `scripts/sync-plugin-skill.sh` so the plugin copy stays identical. Codex and the OpenAI plugin ZIP do not follow symlinks.
 
 ## Use
 

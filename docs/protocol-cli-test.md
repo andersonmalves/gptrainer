@@ -13,10 +13,7 @@ Isto não é avaliação independente, nem evidência de que o método “funcio
 
 O protocolo segura o essencial nos dois runtimes. Claude e Codex invertem o vazamento: Claude recusa “me dá a resposta” e solta walkthrough quando pedem para editar o arquivo; Codex faz o contrário.
 
-Dois bloqueios de empacotamento impedem o passo 3 (submit):
-
-1. O cache do Codex **descarta os symlinks** de `skills/kata/`. Sem `SKILL.md` materializado, `$kata` cai em fallback genérico. O ZIP da OpenAI teria o mesmo buraco.
-2. O contrato de leakage no `SKILL.md` ainda trata “desistência explícita” de forma ampla demais. Falta dizer que “não sei / me dá a resposta” no minuto zero, e um pedido para editar o arquivo do aluno, **não** autorizam o nível 6.
+Dois bloqueios de empacotamento impediam o passo 3 (submit). O primeiro foi corrigido depois deste teste (`scripts/sync-plugin-skill.sh` materializa `skills/kata/`). O segundo (contrato de leakage amplo demais) também foi corrigido no `SKILL.md`; falta retestar as checagens 3 e 5.
 
 ---
 
@@ -116,15 +113,18 @@ Em `~/.codex/plugins/cache/kata/kata/1.0.0/skills/kata/` o cache copiou só `age
 
 Workaround usado neste teste: copiar os arquivos reais para o cache e para `.agents/skills/kata/` nos playgrounds. Isso **não** é o caminho de install do usuário.
 
-Antes de ZIP / Plugins Directory: substituir os symlinks de `skills/kata/` por cópias (ou um script de pack que materializa o arquivo).
+Corrigido depois do teste: `scripts/sync-plugin-skill.sh` materializa cópias em `skills/kata/` (fim dos symlinks).
 
 ---
 
-## Ajustes sugeridos no `SKILL.md` (ainda não aplicados)
+## Ajustes de leakage
 
-1. Pedido para editar o arquivo do aluno **não** é desistência. Recusar a edição, não implementar o núcleo, e continuar o kata.
-2. “Não sei” / “me dá a resposta” no minuto zero **não** autoriza o nível 6. Walkthrough só com pedido explícito da solução completa (o Codex já usou `quero a resposta completa` na checagem 5).
-3. No score: não usar heading ou rótulo “independente”; não pontuar sessão que o coach não observou.
+Aplicado em 2026-08-14 no `SKILL.md` e em `references/session-protocol.md`:
+
+1. Pedido para editar o arquivo do aluno **não** é desistência.
+2. “Não sei” / “me dá a resposta” no minuto zero **não** autoriza o nível 6. Walkthrough só com pedido explícito da solução completa (`quero a resposta completa`).
+
+Ainda pendente no score: não usar heading ou rótulo “independente”; não pontuar sessão que o coach não observou.
 
 ---
 
@@ -135,4 +135,4 @@ Antes de ZIP / Plugins Directory: substituir os symlinks de `skills/kata/` por c
 - Post no LinkedIn.
 - Alteração de git / release.
 
-Próximo passo de produto: materializar `skills/kata/` e as duas frases de leakage; repetir as checagens 3 e 5 nos dois CLIs.
+Próximo passo de produto: repetir as checagens 3 e 5 nos dois CLIs; PNG; submit.

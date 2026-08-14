@@ -1,1 +1,15 @@
-../../../agents/openai.yaml
+interface:
+  display_name: Kata
+  short_description: Coach de raciocínio em código com pistas graduais
+  brand_color: '#2563EB'
+  default_prompt: Use $kata para treinar raciocínio em programação sem revelar a
+    solução.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: false
