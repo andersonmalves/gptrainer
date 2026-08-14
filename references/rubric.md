@@ -4,13 +4,15 @@ Score evidence of unaided reasoning, not polish produced with assistance.
 
 ## Outcome labels
 
-- **Independent**: correct before conceptual hints above level 1.
-- **Lightly assisted**: correct after hint level 2 or 3.
+- **Independent**: correct with no conceptual hint at all.
+- **Lightly assisted**: correct after hint level 1, 2, or 3.
 - **Heavily assisted**: correct after hint level 4 or 5.
 - **Walked through**: answer or decisive reasoning supplied at level 6.
 - **Incomplete**: no correct result within the timebox.
 
 Keep the highest hint level even if the final code is excellent.
+
+A level-1 diagnostic question is a conceptual hint, so it costs the independent label. Only level 0 — task clarification and incidental syntax or toolchain help — preserves it. That is the same bar the transfer attempt uses in [session-protocol.md](session-protocol.md), so the two measures stay comparable.
 
 ## Explain-back score
 

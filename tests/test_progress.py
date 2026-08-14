@@ -67,7 +67,14 @@ class RecordValidationTest(unittest.TestCase):
     def test_rejects_outcome_above_its_hint_range(self) -> None:
         with self.assertRaises(SystemExit) as caught:
             self.record(outcome="independent", initial_result="correct", hints=6)
-        self.assertIn("--hints between 0 and 1", str(caught.exception))
+        self.assertIn("--hints between 0 and 0", str(caught.exception))
+
+    def test_a_diagnostic_question_costs_the_independent_label(self) -> None:
+        with self.assertRaises(SystemExit):
+            self.record(outcome="independent", initial_result="correct", hints=1)
+        self.record(outcome="lightly_assisted", initial_result="correct", hints=1)
+        session = json.loads(self.state.read_text(encoding="utf-8"))["sessions"][0]
+        self.assertEqual(session["highest_hint"], 1)
 
     def test_rejects_independent_outcome_after_a_wrong_answer(self) -> None:
         with self.assertRaises(SystemExit) as caught:

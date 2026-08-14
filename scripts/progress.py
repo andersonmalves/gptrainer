@@ -57,8 +57,8 @@ UNAIDED_PHASES = RECORDABLE_PHASES - {"practice"}
 
 # rubric.md defines each outcome by the highest conceptual hint that preceded it.
 HINT_RANGE_BY_OUTCOME = {
-    "independent": (0, 1),
-    "lightly_assisted": (2, 3),
+    "independent": (0, 0),
+    "lightly_assisted": (1, 3),
     "heavily_assisted": (4, 5),
     "walked_through": (6, 6),
     "incomplete": (0, 5),

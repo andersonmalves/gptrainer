@@ -97,7 +97,7 @@ Uma sessão real produz as duas coisas, e o schema só aceita um valor de `assis
 `rubric.md:7` tolera pista nível 1 (pergunta diagnóstica) dentro do rótulo `independent`. `session-protocol.md:100` exige zero pista conceitual na transferência. São duas réguas diferentes somadas no mesmo indicador.
 
 **Severidade:** média. Ambiguidade de definição na documentação.
-**Status:** mitigado no código (o rótulo agora é consistente com a faixa de pistas), mas a divergência conceitual entre os dois documentos permanece.
+**Status:** corrigido. `independent` passou a exigir zero pista conceitual — a mesma régua da transferência — e a pergunta diagnóstica de nível 1 passou para `lightly_assisted`. As duas medidas voltaram a ser comparáveis. Sessões antigas não são reavaliadas: a validação roda no momento da gravação.
 
 ### 6. Crash em estado v2
 
@@ -149,7 +149,9 @@ Ver `tests/` e o diff de `scripts/progress.py`.
 
 6. **Aparato longitudinal rebaixado** (achados 1 e 7) — `longitudinal-evaluation.md` e `role-separation.md` movidos para `references/deferred/`, cada um com cabeçalho dizendo por que está adiado e o que precisaria existir antes; `configure-program` removido; `future-improvements.md` ganhou os dois itens com a dependência entre eles; `SKILL.md` trocou as duas seções por uma que declara o que uma sessão consegue e o que não consegue estabelecer. Nenhum conteúdo foi apagado.
 
+7. **Definição de `independent` alinhada** (achado 5) — `rubric.md` e `HINT_RANGE_BY_OUTCOME` passaram a exigir nível 0; a faixa de `lightly_assisted` absorveu o nível 1.
+8. **Higiene de repositório** — `README.md` com o escopo honesto do que a skill não estabelece, `.gitignore`, e workflow de CI rodando a suíte em Python 3.9 e 3.14.
+
 ## Deferido — exige decisão
 
-- **Achado 5**: alinhar a definição de `independent` entre `rubric.md` e `session-protocol.md`.
-- Higiene de repositório: `README.md`, `LICENSE`, CI.
+- `LICENSE`: escolha do autor, não derivável do repositório.
