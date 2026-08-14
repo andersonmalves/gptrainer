@@ -83,6 +83,16 @@ Long description (já está no `.codex-plugin/plugin.json`; ≤ 4.000):
 A coaching skill that asks you to attempt the reasoning before it helps. It releases hints one rung at a time, asks for confidence before revealing correctness, and re-tests the concept on a changed surface once the hints are gone. Katas here are engineering reasoning, not puzzle drills. It is not a model trainer and not a psychometric instrument.
 ```
 
+Use case examples (form Claude Console — obrigatório; cole no formato abaixo):
+
+```text
+Exemplo 1: An engineer wants to diagnose duplicate charges despite an idempotency key. Kata withholds the solution, requires a genuine attempt, then releases one hint at a time and re-tests the same idea on a changed surface with no help.
+
+Exemplo 2: Someone preparing a 20-minute debugging or system-design drill. Kata labels the target capability, asks for a plan before code, asks for confidence 1–5 before revealing correctness, and scores only after an unaided transfer task.
+
+Exemplo 3: A developer who notices the assistant finishing every function uses Kata to keep the reasoning. It will not edit the learner’s solution file, and it gives a full walkthrough only after an explicit “I want the complete answer.”
+```
+
 Starter prompts (máx. 3, cada um ≤ 128, sem `@mention`):
 
 ```text
@@ -91,6 +101,15 @@ Use $kata to practice programming reasoning without revealing the solution.
 ```
 
 Privacy, terms e support são **opcionais** em Skills only. Não invente URL. Website basta.
+
+Form Claude Console — plataformas e legal:
+
+| Campo | Valor | Por quê |
+|---|---|---|
+| Claude Code | **Marcar** | Superfície testada (`docs/protocol-cli-test.md`, `claude plugin validate`) |
+| Claude Cowork | **Não marcar** | Não foi testado neste pack; o form pede teste antes de declarar suporte |
+| Tipo de licença | `MIT` | `LICENSE` + `plugin.json` |
+| URL da política de privacidade | vazio | Sem coleta de dados, sem MCP; não inventar URL |
 
 Release notes (primeira submissão):
 
@@ -124,7 +143,9 @@ Autor individual: [https://platform.claude.com/plugins/submit](https://platform.
 1. Cole a URL pública: `https://github.com/andersonmalves/kata`
 2. Confirme que o repo está **público** (fechado é recusado)
 3. Nome / descrição conforme a tabela do §1.3
-4. Envie
+4. Casos de uso: bloco *Use case examples* do §1.3 (o form recusa envio se estiver vazio)
+5. Plataformas / licença / privacidade: tabela do §1.3. Se o form ainda disser “selecione pelo menos uma plataforma”, clique em **Claude Code** (borda azul em Cowork não conta como seleção)
+6. Envie
 
 Termos que o diretório exige: [Directory Terms](https://support.claude.com/en/articles/13145338-anthropic-software-directory-terms) e [Directory Policy](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy). Leia antes de atestar.
 
@@ -170,6 +191,8 @@ Passe se a listagem mostrar, dentro de `kata/`:
 - `assets/icon.png` e `assets/logo.png`
 
 ZIP ≤ 100 MB (este fica muito abaixo). Entradas são arquivos regulares; os PNG já não são symlink.
+
+`agents/openai.yaml` → `policy` só pode ter `allow_implicit_invocation: false`. Não coloque `products` (o scanner recusa `chatgpt`/`api`/`atlas`; o upload de 14 ago 2026 recusou a chave inteira). Superfícies ChatGPT/Codex ficam no portal, não nesse YAML.
 
 ### 3.2 Abrir o portal
 

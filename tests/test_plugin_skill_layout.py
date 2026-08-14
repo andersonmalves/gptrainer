@@ -57,6 +57,23 @@ class PluginListingLimitsTest(unittest.TestCase):
         value = lines[0].split(":", 1)[1].strip()
         self.assertLessEqual(len(value), 30)
 
+    def test_openai_yaml_policy_only_allows_implicit_invocation(self) -> None:
+        """Directory scanner: policy may contain only allow_implicit_invocation."""
+        text = (ROOT / "agents" / "openai.yaml").read_text(encoding="utf-8")
+        policy_lines = []
+        in_policy = False
+        for line in text.splitlines():
+            if line.startswith("policy:"):
+                in_policy = True
+                continue
+            if in_policy and line and not line.startswith(" "):
+                break
+            if in_policy:
+                policy_lines.append(line)
+        keys = [line.split(":", 1)[0].strip() for line in policy_lines if line.strip()]
+        self.assertEqual(keys, ["allow_implicit_invocation"])
+        self.assertIn("allow_implicit_invocation: false", text)
+
 
 if __name__ == "__main__":
     unittest.main()

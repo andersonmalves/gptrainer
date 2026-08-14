@@ -7,9 +7,4 @@ interface:
   icon_small: assets/icon.png
   icon_large: assets/logo.png
 policy:
-  products:
-  - chatgpt
-  - codex
-  - api
-  - atlas
   allow_implicit_invocation: false
