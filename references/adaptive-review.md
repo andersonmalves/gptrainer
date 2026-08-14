@@ -75,4 +75,6 @@ python scripts/progress.py review --state .coding-reasoning/progress.json \
 
 `record` rejects internally inconsistent sessions: the hint level must match the outcome band in [rubric.md](rubric.md), `independent` requires a correct first answer, and an unaided policy or phase forbids conceptual hints. Fix the field that is wrong rather than relabelling the session to satisfy the command.
 
-When a version-1 state file is read, the script migrates its sessions in memory and creates conservative concept cards. Version-2 files retain their cards and receive explicit program/evaluation metadata defaults. The next writing command saves schema version 3.
+`--transfer` is optional and carries its own `--transfer-policy`, because the transfer task is unaided even when the session was coached. Omit `--transfer` when no transfer task was given; do not record a zero.
+
+When a version-1 state file is read, the script migrates its sessions in memory and creates conservative concept cards. Version-2 files retain their cards and receive explicit program/evaluation metadata defaults. Version-3 files keep their program and cards, and their transfer scores are labelled `standard_unaided` because that field predates the explicit policy. Sessions recorded under the retired `immediate_transfer` phase stay readable. The next writing command saves schema version 4.

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 VALID_OUTCOMES = {
     "independent",
     "lightly_assisted",
@@ -31,6 +31,8 @@ VALID_CAPABILITIES = {
     "ai_code_review",
     "algorithms_data",
 }
+# "immediate_transfer" is readable in legacy state but is no longer a session phase:
+# the transfer task happens inside a session, so its score is a session field.
 VALID_PHASES = {
     "baseline",
     "practice",
@@ -39,6 +41,7 @@ VALID_PHASES = {
     "retention_21d",
     "final",
 }
+RECORDABLE_PHASES = VALID_PHASES - {"immediate_transfer"}
 VALID_ASSISTANCE = {
     "strict_unaided",
     "standard_unaided",
@@ -51,7 +54,7 @@ VALID_OBJECTIVES = {"recover", "prevent_decline", "improve_baseline"}
 
 UNAIDED_POLICIES = {"strict_unaided", "standard_unaided"}
 ASSISTED_POLICIES = VALID_ASSISTANCE - UNAIDED_POLICIES
-UNAIDED_PHASES = VALID_PHASES - {"practice"}
+UNAIDED_PHASES = RECORDABLE_PHASES - {"practice"}
 
 # rubric.md defines each outcome by the highest conceptual hint that preceded it.
 HINT_RANGE_BY_OUTCOME = {
@@ -76,6 +79,11 @@ def normalize_session(session: dict[str, Any]) -> dict[str, Any]:
     normalized.setdefault("evaluator_context", "coaching")
     normalized.setdefault("package_id", "")
     normalized.setdefault("policy_deviations", "")
+    normalized.setdefault("transfer", None)
+    # The transfer task is unaided by protocol; legacy rows predate the explicit field.
+    normalized.setdefault(
+        "transfer_policy", "standard_unaided" if normalized["transfer"] is not None else None
+    )
     return normalized
 
 
@@ -110,7 +118,7 @@ def parse_day(value: str) -> date:
 
 def migrate_v1(data: dict[str, Any]) -> dict[str, Any]:
     migrated = empty_state()
-    migrated["sessions"] = [normalize_session(item) for item in data.get("sessions", [])]
+    migrated["sessions"] = list(data.get("sessions", []))
     seen: set[str] = set()
     for session in migrated["sessions"]:
         topic = str(session.get("topic", "legacy concept"))
@@ -141,7 +149,15 @@ def migrate_v1(data: dict[str, Any]) -> dict[str, Any]:
 
 def migrate_v2(data: dict[str, Any]) -> dict[str, Any]:
     migrated = empty_state()
-    migrated["sessions"] = [normalize_session(item) for item in data.get("sessions", [])]
+    migrated["sessions"] = list(data.get("sessions", []))
+    migrated["cards"] = data.get("cards", [])
+    return migrated
+
+
+def migrate_v3(data: dict[str, Any]) -> dict[str, Any]:
+    migrated = empty_state()
+    migrated["program"] = data.get("program")
+    migrated["sessions"] = list(data.get("sessions", []))
     migrated["cards"] = data.get("cards", [])
     return migrated
 
@@ -159,10 +175,13 @@ def load_state(path: Path, allow_missing: bool = False) -> dict[str, Any]:
         data = migrate_v1(data)
     elif data.get("schema_version") == 2 and isinstance(data.get("sessions"), list):
         data = migrate_v2(data)
+    elif data.get("schema_version") == 3 and isinstance(data.get("sessions"), list):
+        data = migrate_v3(data)
     elif data.get("schema_version") != SCHEMA_VERSION:
         raise SystemExit(f"Unsupported state schema in {path}")
     if not isinstance(data.get("sessions"), list) or not isinstance(data.get("cards"), list):
         raise SystemExit(f"Invalid state structure in {path}")
+    data["sessions"] = [normalize_session(session) for session in data["sessions"]]
     data["cards"] = [normalize_card(card) for card in data["cards"]]
     data.setdefault("program", None)
     return data
@@ -181,12 +200,15 @@ def calibration_label(initial_result: str, confidence: int) -> str:
     return "calibrated"
 
 
-def initial_recall(outcome: str, initial_result: str, explain_back: int, transfer: int) -> str:
+def initial_recall(
+    outcome: str, initial_result: str, explain_back: int, transfer: int | None
+) -> str:
     if initial_result == "incorrect":
         return "again"
     if initial_result == "partial" or outcome in {"heavily_assisted", "walked_through", "incomplete"}:
         return "hard"
-    if outcome == "independent" and explain_back >= 3 and transfer >= 4:
+    # A session without a transfer attempt cannot earn the strongest rating.
+    if outcome == "independent" and explain_back >= 3 and (transfer or 0) >= 4:
         return "easy"
     return "good"
 
@@ -324,8 +346,9 @@ def cmd_record(args: argparse.Namespace) -> None:
     data = load_state(args.state, allow_missing=True)
     validate_score("hints", args.hints, 0, 6)
     validate_score("explain-back", args.explain_back, 0, 4)
-    validate_score("transfer", args.transfer, 0, 4)
     validate_score("confidence", args.confidence, 1, 5)
+    if args.transfer is not None:
+        validate_score("transfer", args.transfer, 0, 4)
     if args.minutes < 0:
         raise SystemExit("--minutes cannot be negative")
     if args.evaluator == "independent" and args.evaluator_context != "isolated":
@@ -359,6 +382,7 @@ def cmd_record(args: argparse.Namespace) -> None:
         "highest_hint": args.hints,
         "explain_back": args.explain_back,
         "transfer": args.transfer,
+        "transfer_policy": args.transfer_policy if args.transfer is not None else None,
         "minutes": args.minutes,
         "notes": args.notes or "",
         "recorded_at": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -420,7 +444,9 @@ def cmd_due(args: argparse.Namespace) -> None:
 
 
 def distribution(items: list[dict[str, Any]], field: str) -> str:
-    values = [int(item.get(field, 0)) for item in items]
+    values = [int(item[field]) for item in items if item.get(field) is not None]
+    if not values:
+        return "n=0"
     return (
         f"n={len(values)} median={statistics.median(values):.1f} "
         f"range={min(values)}-{max(values)}"
@@ -447,9 +473,18 @@ def cmd_status(args: argparse.Namespace) -> None:
                 continue
             independent = sum(item.get("outcome") == "independent" for item in items)
             print(f"{label} sessions: {len(items)} (independent outcomes: {independent})")
-            print(f"  Transfer 0-4:     {distribution(items, 'transfer')}")
             print(f"  Explain-back 0-4: {distribution(items, 'explain_back')}")
             print(f"  Highest hint 0-6: {distribution(items, 'highest_hint')}")
+        # The transfer attempt is unaided even inside a coached session, so it is
+        # never reported under the assistance policy of the session that hosted it.
+        attempted = [item for item in sessions if item.get("transfer") is not None]
+        skipped = len(sessions) - len(attempted)
+        print(f"Transfer attempts (unaided by protocol): {distribution(attempted, 'transfer')}")
+        for policy in sorted({str(item.get("transfer_policy")) for item in attempted}):
+            items = [item for item in attempted if item.get("transfer_policy") == policy]
+            print(f"  {policy}: {distribution(items, 'transfer')}")
+        if skipped:
+            print(f"  sessions without a transfer task: {skipped}")
         calibrated = [item.get("confidence_calibration") for item in sessions]
         print(f"Confident-wrong attempts: {calibrated.count('confident_wrong')}")
         print(f"Uncertain-correct attempts: {calibrated.count('uncertain_correct')}")
@@ -505,7 +540,7 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--exercise", required=True)
     record.add_argument("--mode", required=True)
     record.add_argument("--capability", choices=sorted(VALID_CAPABILITIES), required=True)
-    record.add_argument("--phase", choices=sorted(VALID_PHASES), default="practice")
+    record.add_argument("--phase", choices=sorted(RECORDABLE_PHASES), default="practice")
     record.add_argument("--assistance", choices=sorted(VALID_ASSISTANCE), default="coached")
     record.add_argument("--evaluator", choices=sorted(VALID_EVALUATORS), default="coach")
     record.add_argument(
@@ -518,7 +553,13 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--outcome", choices=sorted(VALID_OUTCOMES), required=True)
     record.add_argument("--hints", type=int, required=True)
     record.add_argument("--explain-back", type=int, required=True)
-    record.add_argument("--transfer", type=int, required=True)
+    record.add_argument("--transfer", type=int, help="0-4; omit when no transfer task was given")
+    record.add_argument(
+        "--transfer-policy",
+        choices=sorted(UNAIDED_POLICIES),
+        default="standard_unaided",
+        help="the transfer task is unaided by protocol; records which unaided policy applied",
+    )
     record.add_argument("--minutes", type=int, required=True)
     record.add_argument("--notes")
     record.set_defaults(func=cmd_record)

@@ -88,8 +88,8 @@ O exemplo canônico (`SKILL.md:147-153`) grava `--phase practice --assistance co
 
 Uma sessão real produz as duas coisas, e o schema só aceita um valor de `assistance`. Ou se subnotifica, ou se duplica a mesma tentativa como duas observações — e `capability-model.md:20` proíbe explicitamente contar uma tentativa como duas medições.
 
-**Severidade:** média-alta. Exige decisão de modelagem, não correção pontual.
-**Status:** não corrigido (adiado).
+**Severidade:** média-alta. Exigiu decisão de modelagem, não correção pontual.
+**Status:** corrigido. A transferência é atributo da sessão, não fase: `immediate_transfer` deixou de ser fase gravável (continua legível em estados legados), `--transfer` virou opcional e ganhou `--transfer-policy`, e o `status` reporta a transferência fora dos blocos de assistência — porque ela é sem ajuda mesmo dentro de uma sessão `coached`.
 
 ### 5. `independent` não significa "sem ajuda"
 
@@ -143,10 +143,10 @@ Ver `tests/` e o diff de `scripts/progress.py`.
 2. **`normalize_card` em `load_state`** — todo card recebe os campos do scheduler antes de ser usado, em qualquer versão de schema; `id` e `due` ausentes viram erro explícito em vez de `KeyError`.
 3. **`status` reescrito** — separa sessões sem ajuda de assistidas, reporta mediana com n e amplitude em vez de média global, e marca capacidades com menos de duas tarefas como evidência insuficiente (`capability-model.md:17`).
 4. **Suíte de testes** — `tests/test_progress.py` e `tests/test_runner.py`, stdlib apenas, executadas com `python3 -m unittest discover -s tests`.
+5. **Transferência deixou de ser fase** (achado 4) — schema 4. `RECORDABLE_PHASES` exclui `immediate_transfer`; `--transfer` é opcional e não deve receber zero quando não houve tarefa; `--transfer-policy` registra sob qual política sem ajuda a transferência ocorreu; `migrate_v3` rotula scores antigos como `standard_unaided` e preserva sessões gravadas na fase aposentada.
 
 ## Deferido — exige decisão
 
-- **Achado 4** (conflação transferência/fase): resolver exige mudar o schema e os exemplos em `SKILL.md` e `adaptive-review.md`.
 - **Achado 1 e 7** (aparato longitudinal): a recomendação da auditoria é rebaixar `longitudinal-evaluation.md`, `role-separation.md` e o subcomando `configure-program` a backlog explícito, porque prometem uma independência que a arquitetura não entrega e um poder estatístico que o n não sustenta. É remoção de conteúdo — decisão do autor.
 - **Achado 5**: alinhar a definição de `independent` entre `rubric.md` e `session-protocol.md`.
 - Higiene de repositório: `README.md`, `LICENSE`, CI.

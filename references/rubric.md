@@ -42,10 +42,11 @@ Maior pista conceitual: 0–6
 Confiança antes do feedback: 1–5
 Calibração: calibrated | confident_wrong | uncertain_correct
 Explicação de volta: 0–4
-Transferência sem ajuda: 0–4
+Transferência sem ajuda: 0–4 | não aplicada
+Política da transferência: strict_unaided | standard_unaided
 Tempo: N min
 Capacidade: capability_id
-Fase: baseline | practice | immediate_transfer | retention_7d | retention_21d | final
+Fase: baseline | practice | retention_7d | retention_21d | final
 Política de ajuda: strict_unaided | standard_unaided | coached | conventional_ai
 Avaliador: independent | coach_scored
 Pacote do desafio: package_id
@@ -53,6 +54,8 @@ Evidência observada: ...
 Próximo alvo: ...
 Revisão sugerida: YYYY-MM-DD
 ```
+
+The transfer attempt belongs to the session that produced it and is always unaided, even when the session itself was coached. Record it as a session field with its own policy; it is not a separate phase. Leave it unrecorded when no transfer task was given rather than entering a zero.
 
 Do not aggregate a single session into a percentage of “mastery.” For trends, compare repeated unaided transfer and delayed-retention attempts on the same skill family.
 

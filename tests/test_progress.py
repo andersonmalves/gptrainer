@@ -50,8 +50,8 @@ class RecordValidationTest(unittest.TestCase):
 
     def run_command(self, argv: list[str]) -> None:
         parser = progress.build_parser()
-        args = parser.parse_args(argv)
-        with contextlib.redirect_stdout(io.StringIO()):
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            args = parser.parse_args(argv)
             args.func(args)
 
     def record(self, **overrides) -> None:
@@ -94,6 +94,27 @@ class RecordValidationTest(unittest.TestCase):
             self.record(outcome="incomplete", initial_result="correct", hints=0)
         self.assertIn("cannot pair with", str(caught.exception))
 
+    def test_transfer_is_optional_and_defaults_to_no_attempt(self) -> None:
+        argv = ["record", "--state", str(self.state)]
+        for key, value in COHERENT.items():
+            if key == "transfer":
+                continue
+            argv += [f"--{key.replace('_', '-')}", str(value)]
+        self.run_command(argv)
+        session = json.loads(self.state.read_text(encoding="utf-8"))["sessions"][0]
+        self.assertIsNone(session["transfer"])
+        self.assertIsNone(session["transfer_policy"])
+
+    def test_transfer_carries_an_unaided_policy_inside_a_coached_session(self) -> None:
+        self.record()
+        session = json.loads(self.state.read_text(encoding="utf-8"))["sessions"][0]
+        self.assertEqual(session["assistance"], "coached")
+        self.assertEqual(session["transfer_policy"], "standard_unaided")
+
+    def test_immediate_transfer_is_no_longer_a_recordable_phase(self) -> None:
+        with self.assertRaises(SystemExit):
+            self.record(phase="immediate_transfer")
+
     def test_accepts_a_clean_unaided_retention_session(self) -> None:
         self.record(
             phase="retention_7d",
@@ -134,6 +155,38 @@ class StateMigrationTest(unittest.TestCase):
         with self.assertRaises(SystemExit) as caught:
             progress.load_state(self.state)
         self.assertIn("missing required field 'due'", str(caught.exception))
+
+    def test_v3_transfer_score_gains_an_explicit_unaided_policy(self) -> None:
+        self.write(
+            {
+                "schema_version": 3,
+                "program": {"objective": "improve_baseline"},
+                "sessions": [{"topic": "t", "assistance": "coached", "transfer": 3}],
+                "cards": [],
+            }
+        )
+        data = progress.load_state(self.state)
+        self.assertEqual(data["sessions"][0]["transfer_policy"], "standard_unaided")
+        self.assertEqual(data["program"]["objective"], "improve_baseline")
+
+    def test_v3_session_without_transfer_stays_unrecorded(self) -> None:
+        self.write(
+            {"schema_version": 3, "program": None, "sessions": [{"topic": "t"}], "cards": []}
+        )
+        session = progress.load_state(self.state)["sessions"][0]
+        self.assertIsNone(session["transfer"])
+        self.assertIsNone(session["transfer_policy"])
+
+    def test_retired_immediate_transfer_phase_stays_readable(self) -> None:
+        self.write(
+            {
+                "schema_version": 3,
+                "program": None,
+                "sessions": [{"topic": "t", "phase": "immediate_transfer", "transfer": 4}],
+                "cards": [],
+            }
+        )
+        self.assertEqual(progress.load_state(self.state)["sessions"][0]["phase"], "immediate_transfer")
 
     def test_unsupported_schema_is_rejected(self) -> None:
         self.write({"schema_version": 99, "sessions": [], "cards": []})
@@ -222,6 +275,13 @@ class StatusReportTest(unittest.TestCase):
 
     def test_flags_capabilities_with_a_single_task(self) -> None:
         self.assertIn("[insufficient: <2 tasks]", self.status_output())
+
+    def test_transfer_is_reported_outside_the_assistance_blocks(self) -> None:
+        output = self.status_output()
+        assisted_block = output.split("Assisted sessions:")[1].split("Transfer attempts")[0]
+        self.assertNotIn("Transfer", assisted_block)
+        self.assertIn("Transfer attempts (unaided by protocol): n=2", output)
+        self.assertIn("standard_unaided: n=2", output)
 
 
 class LabelTest(unittest.TestCase):
