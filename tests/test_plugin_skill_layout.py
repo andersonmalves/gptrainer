@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import filecmp
+import json
 import unittest
 from pathlib import Path
 
@@ -33,6 +34,28 @@ class PluginSkillLayoutTest(unittest.TestCase):
                     filecmp.cmp(canonical, packed, shallow=False),
                     f"{packed} drifted from {canonical}; run scripts/sync-plugin-skill.sh",
                 )
+
+
+class PluginListingLimitsTest(unittest.TestCase):
+    def test_codex_interface_fits_openai_directory_limits(self) -> None:
+        manifest = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        interface = manifest["interface"]
+        self.assertLessEqual(len(interface["displayName"]), 30)
+        self.assertLessEqual(len(interface["shortDescription"]), 30)
+        self.assertEqual(interface["shortDescription"].count("\n"), 0)
+        self.assertLessEqual(len(interface["longDescription"]), 4000)
+        self.assertEqual(manifest["author"]["name"], interface["developerName"])
+        self.assertLessEqual(len(interface["defaultPrompt"]), 3)
+        for prompt in interface["defaultPrompt"]:
+            self.assertLessEqual(len(prompt), 128)
+            self.assertNotIn("@", prompt)
+
+    def test_openai_yaml_short_description_fits_limit(self) -> None:
+        text = (ROOT / "agents" / "openai.yaml").read_text(encoding="utf-8")
+        lines = [line for line in text.splitlines() if line.startswith("  short_description:")]
+        self.assertEqual(len(lines), 1)
+        value = lines[0].split(":", 1)[1].strip()
+        self.assertLessEqual(len(value), 30)
 
 
 if __name__ == "__main__":

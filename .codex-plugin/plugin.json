@@ -13,7 +13,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Kata",
-    "shortDescription": "Coach de raciocínio em código com pistas graduais",
+    "shortDescription": "Coach de raciocínio em código",
     "longDescription": "A coaching skill that asks you to attempt the reasoning before it helps. It releases hints one rung at a time, asks for confidence before revealing correctness, and re-tests the concept on a changed surface once the hints are gone. Katas here are engineering reasoning, not puzzle drills. It is not a model trainer and not a psychometric instrument.",
     "developerName": "Anderson Alves",
     "category": "Productivity",

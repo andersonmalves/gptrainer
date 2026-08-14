@@ -1,6 +1,6 @@
 interface:
   display_name: Kata
-  short_description: Coach de raciocínio em código com pistas graduais
+  short_description: Coach de raciocínio em código
   brand_color: '#2563EB'
   default_prompt: Use $kata para treinar raciocínio em programação sem revelar a
     solução.
