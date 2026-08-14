@@ -1,0 +1,29 @@
+{
+  "name": "kata",
+  "version": "1.0.0",
+  "description": "Coaches programming reasoning: attempt first, progressive hints, unaided transfer. Not a model trainer.",
+  "author": {
+    "name": "Anderson Alves",
+    "url": "https://github.com/andersonmalves"
+  },
+  "homepage": "https://github.com/andersonmalves/kata",
+  "repository": "https://github.com/andersonmalves/kata",
+  "license": "MIT",
+  "keywords": ["coaching", "deliberate-practice", "coding", "kata"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Kata",
+    "shortDescription": "Coach de raciocínio em código com pistas graduais",
+    "longDescription": "A coaching skill that asks you to attempt the reasoning before it helps. It releases hints one rung at a time, asks for confidence before revealing correctness, and re-tests the concept on a changed surface once the hints are gone. Katas here are engineering reasoning, not puzzle drills. It is not a model trainer and not a psychometric instrument.",
+    "developerName": "Anderson Alves",
+    "category": "Productivity",
+    "websiteURL": "https://github.com/andersonmalves/kata",
+    "defaultPrompt": [
+      "Use $kata para treinar raciocínio em programação sem revelar a solução.",
+      "Use $kata to practice programming reasoning without revealing the solution."
+    ],
+    "brandColor": "#2563EB",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/icon.svg"
+  }
+}

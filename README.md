@@ -63,7 +63,12 @@ The multiweek evaluation protocol and the four-role separation live in [referenc
 
 | Path | Contents |
 |---|---|
-| `SKILL.md` | The skill: contract, capability targets, modes, hint ladder, leakage rules |
+| `SKILL.md` | Canonical skill: contract, capability targets, modes, hint ladder, leakage rules |
+| `skills/kata/` | Codex skill layout; symlinks to the canonical `SKILL.md`, `references/`, `scripts/`, `assets/`, and `agents/openai.yaml` |
+| `.claude-plugin/plugin.json` | Claude Code plugin manifest |
+| `.claude-plugin/marketplace.json` | Claude Code marketplace catalog for this repository |
+| `.codex-plugin/plugin.json` | Codex / ChatGPT plugin manifest |
+| `.agents/plugins/marketplace.json` | Codex marketplace catalog for this repository |
 | `references/` | Protocols loaded on demand — session flow, rubric, assistance policies, challenge design, review |
 | `references/deferred/` | Drafted protocols that are backlog, not current capability |
 | `scripts/runner.py` | Deterministic test runner for Python, TypeScript, Java, Kotlin |
@@ -72,6 +77,35 @@ The multiweek evaluation protocol and the four-role separation live in [referenc
 | `tests/` | Test suite for both scripts |
 
 ## Use
+
+### Plugin
+
+This repository is both the plugin and a one-plugin marketplace.
+
+Claude Code, local session:
+
+```bash
+claude --plugin-dir .
+```
+
+Claude Code, from GitHub:
+
+```text
+/plugin marketplace add andersonmalves/kata
+/plugin install kata@kata
+```
+
+After a plugin install, invoke `/kata:kata` (plugin namespace plus skill folder).
+
+Codex, from GitHub:
+
+```bash
+codex plugin marketplace add andersonmalves/kata
+```
+
+Then install **Kata** from that marketplace in the Codex / ChatGPT plugin UI.
+
+### Standalone skill
 
 Install as `kata`. Claude Code discovers skills placed in `~/.claude/skills/kata/` (personal) or `.claude/skills/kata/` (project), with `SKILL.md` at the root of that directory. Codex uses the interface metadata in `agents/openai.yaml`. Invoke with `/kata` or “me passa um kata”.
 
