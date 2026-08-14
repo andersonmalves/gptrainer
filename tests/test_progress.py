@@ -38,6 +38,8 @@ def record_args(**overrides) -> list[str]:
     fields = {**COHERENT, **overrides}
     args = []
     for key, value in fields.items():
+        if value is None:
+            continue
         args += [f"--{key.replace('_', '-')}", str(value)]
     return args
 
@@ -123,7 +125,9 @@ class RecordValidationTest(unittest.TestCase):
             self.record(phase="immediate_transfer")
 
     def test_accepts_a_clean_unaided_retention_session(self) -> None:
+        self.record(date="2026-01-01")
         self.record(
+            date="2026-01-08",
             phase="retention_7d",
             assistance="standard_unaided",
             outcome="independent",
@@ -132,7 +136,110 @@ class RecordValidationTest(unittest.TestCase):
             hints=0,
         )
         state = json.loads(self.state.read_text(encoding="utf-8"))
-        self.assertEqual(state["sessions"][0]["phase"], "retention_7d")
+        self.assertEqual(state["sessions"][1]["phase"], "retention_7d")
+
+    def test_rejects_independent_evaluator(self) -> None:
+        with self.assertRaises(SystemExit):
+            self.record(evaluator="independent", evaluator_context="isolated", package_id="x")
+
+    def test_rejects_conventional_ai_scored_as_independent(self) -> None:
+        with self.assertRaises(SystemExit) as caught:
+            self.record(
+                assistance="conventional_ai",
+                outcome="independent",
+                initial_result="correct",
+                hints=0,
+                transfer=None,
+            )
+        self.assertIn("conventional_ai cannot pair with outcome independent", str(caught.exception))
+
+    def test_rejects_unaided_transfer_under_conventional_ai(self) -> None:
+        with self.assertRaises(SystemExit) as caught:
+            self.record(assistance="conventional_ai", outcome="lightly_assisted", hints=2)
+        self.assertIn("cannot record an unaided transfer score", str(caught.exception))
+
+    def test_rejects_correct_first_answer_with_heavy_help(self) -> None:
+        with self.assertRaises(SystemExit) as caught:
+            self.record(initial_result="correct", outcome="heavily_assisted", hints=4)
+        self.assertIn("cannot pair with heavily_assisted", str(caught.exception))
+
+    def test_rejects_retention_before_the_minimum_gap(self) -> None:
+        self.record(date="2026-01-01")
+        with self.assertRaises(SystemExit) as caught:
+            self.record(
+                date="2026-01-01",
+                phase="retention_7d",
+                assistance="standard_unaided",
+                outcome="independent",
+                initial_result="correct",
+                hints=0,
+            )
+        self.assertIn("requires at least 7 days", str(caught.exception))
+
+    def test_rejects_retention_without_a_prior_session(self) -> None:
+        with self.assertRaises(SystemExit) as caught:
+            self.record(
+                date="2026-01-08",
+                phase="retention_7d",
+                assistance="standard_unaided",
+                outcome="independent",
+                initial_result="correct",
+                hints=0,
+            )
+        self.assertIn("requires a prior session", str(caught.exception))
+
+    def test_assisted_session_does_not_update_stability(self) -> None:
+        self.record(date="2026-01-01")
+        card = json.loads(self.state.read_text(encoding="utf-8"))["cards"][0]
+        self.assertEqual(card["stability_days"], 1.0)
+        self.assertEqual(card["reviews"], 0)
+        self.assertEqual(card["due"], "2026-01-08")
+
+    def test_review_without_unaided_session_is_rejected(self) -> None:
+        self.record(date="2026-01-01")
+        with self.assertRaises(SystemExit) as caught:
+            self.run_command(
+                [
+                    "review",
+                    "--state",
+                    str(self.state),
+                    "--concept-id",
+                    "payment-idempotency-race",
+                    "--recall",
+                    "easy",
+                    "--confidence",
+                    "5",
+                ]
+            )
+        self.assertIn("requires a recorded unaided session", str(caught.exception))
+
+    def test_review_after_unaided_session_updates_the_card(self) -> None:
+        self.record(
+            date="2026-01-01",
+            assistance="standard_unaided",
+            outcome="independent",
+            initial_result="correct",
+            hints=0,
+            confidence=3,
+        )
+        self.run_command(
+            [
+                "review",
+                "--state",
+                str(self.state),
+                "--concept-id",
+                "payment-idempotency-race",
+                "--recall",
+                "good",
+                "--confidence",
+                "3",
+                "--on",
+                "2026-01-08",
+            ]
+        )
+        card = json.loads(self.state.read_text(encoding="utf-8"))["cards"][0]
+        self.assertEqual(card["last_recall"], "good")
+        self.assertEqual(card["last_review"], "2026-01-08")
 
 
 class StateMigrationTest(unittest.TestCase):
@@ -162,6 +269,25 @@ class StateMigrationTest(unittest.TestCase):
         with self.assertRaises(SystemExit) as caught:
             progress.load_state(self.state)
         self.assertIn("missing required field 'due'", str(caught.exception))
+
+    def test_invalid_due_date_fails_without_a_traceback(self) -> None:
+        self.write(
+            {
+                "schema_version": 4,
+                "program": None,
+                "sessions": [],
+                "cards": [{"id": "c1", "due": "soon"}],
+            }
+        )
+        with self.assertRaises(SystemExit) as caught:
+            progress.load_state(self.state)
+        self.assertIn("Invalid card due", str(caught.exception))
+
+    def test_non_object_session_fails_without_a_traceback(self) -> None:
+        self.write({"schema_version": 4, "program": None, "sessions": ["oops"], "cards": []})
+        with self.assertRaises(SystemExit) as caught:
+            progress.load_state(self.state)
+        self.assertIn("Session must be an object", str(caught.exception))
 
     def test_v3_transfer_score_gains_an_explicit_unaided_policy(self) -> None:
         self.write(
@@ -243,16 +369,17 @@ class StatusReportTest(unittest.TestCase):
         self.addCleanup(self.workspace.cleanup)
         parser = progress.build_parser()
         for overrides in (
-            {},
+            {"date": "2026-01-01"},
             {
                 "concept_id": "retention-check",
                 "capability": "code_reading",
-                "phase": "retention_7d",
+                "phase": "baseline",
                 "assistance": "standard_unaided",
                 "outcome": "independent",
                 "initial_result": "correct",
                 "hints": 0,
                 "transfer": 4,
+                "date": "2026-01-01",
             },
         ):
             args = parser.parse_args(
@@ -329,6 +456,7 @@ class DeferredProgramTest(unittest.TestCase):
 class LabelTest(unittest.TestCase):
     def test_calibration_labels(self) -> None:
         self.assertEqual(progress.calibration_label("incorrect", 4), "confident_wrong")
+        self.assertEqual(progress.calibration_label("partial", 5), "confident_wrong")
         self.assertEqual(progress.calibration_label("correct", 2), "uncertain_correct")
         self.assertEqual(progress.calibration_label("correct", 4), "calibrated")
 

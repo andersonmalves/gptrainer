@@ -22,7 +22,7 @@ Do not ask after revealing a test result or correction; that destroys the calibr
 
 Flag two useful mismatches:
 
-- **Confident wrong**: incorrect at confidence 4–5. Review soon and diagnose the faulty mental model.
+- **Confident wrong**: incorrect or only partially correct at confidence 4–5. Review soon and diagnose the faulty mental model.
 - **Uncertain correct**: correct at confidence 1–2. Reinforce the causal explanation and retest in a changed context.
 
 ## Recall ratings
@@ -40,9 +40,13 @@ Do not let the learner choose the rating based only on how the review felt.
 
 ## Scheduler limits
 
-`scripts/progress.py` uses a deterministic, FSRS-inspired model with concept-level stability and difficulty. It is **not** the official FSRS algorithm and must not be described as one.
+`scripts/progress.py` uses a deterministic interval heuristic with concept-level stability and difficulty. Growth constants are arbitrary. It is **not** FSRS and must not be described as FSRS-inspired in a way that implies Anki/FSRS validation.
 
-- Failed recall reduces stability and increases difficulty.
+- Only **unaided** sessions (`strict_unaided` or `standard_unaided`) update stability and difficulty.
+- Assisted sessions may create a concept card due in 7 days; they do not count as recall evidence.
+- `review` requires a recorded unaided session for that concept.
+- `retention_7d` and `retention_21d` require a prior session for the concept and at least 7 or 21 days since that last session.
+- Failed unaided recall reduces stability and increases difficulty.
 - Confident-wrong recall is scheduled for the next day.
 - Hard recall grows the interval slowly.
 - Good and easy recall grow the interval increasingly as difficulty falls.
@@ -57,7 +61,7 @@ Record a session only after asking for confidence before feedback:
 
 ```bash
 python scripts/progress.py record --state .coding-reasoning/progress.json \
-  --concept-id payment-idempotency-race --topic "payment idempotency" \
+  --date 2026-01-01 --concept-id payment-idempotency-race --topic "payment idempotency" \
   --exercise "concurrent duplicate requests" --mode debug \
   --capability invariants_failures --phase practice \
   --assistance coached --evaluator coach \
@@ -65,15 +69,23 @@ python scripts/progress.py record --state .coding-reasoning/progress.json \
   --outcome lightly_assisted --hints 2 --explain-back 3 --transfer 2 --minutes 28
 ```
 
-List due concepts and record an unaided review:
+List due concepts. Grade recall only after an unaided session exists for that concept:
 
 ```bash
 python scripts/progress.py due --state .coding-reasoning/progress.json
+python scripts/progress.py record --state .coding-reasoning/progress.json \
+  --date 2026-01-08 --concept-id payment-idempotency-race \
+  --topic "payment idempotency" --exercise "redelivery of the same key" \
+  --mode debug --capability invariants_failures --phase retention_7d \
+  --assistance standard_unaided --evaluator coach \
+  --initial-result correct --confidence 3 --outcome independent \
+  --hints 0 --explain-back 3 --minutes 20
 python scripts/progress.py review --state .coding-reasoning/progress.json \
-  --concept-id payment-idempotency-race --recall good --confidence 3
+  --concept-id payment-idempotency-race --recall good --confidence 3 \
+  --on 2026-01-08
 ```
 
-`record` rejects internally inconsistent sessions: the hint level must match the outcome band in [rubric.md](rubric.md), `independent` requires a correct first answer, and an unaided policy or phase forbids conceptual hints. Fix the field that is wrong rather than relabelling the session to satisfy the command.
+`record` rejects internally inconsistent sessions: the hint level must match the outcome band in [rubric.md](rubric.md), `independent` requires a correct first answer, a correct first answer cannot be `heavily_assisted` or `walked_through`, `conventional_ai` cannot be scored as `independent` or carry an unaided transfer score, and an unaided policy or phase forbids conceptual hints. Fix the field that is wrong rather than relabelling the session to satisfy the command.
 
 `--transfer` is optional and carries its own `--transfer-policy`, because the transfer task is unaided even when the session was coached. Omit `--transfer` when no transfer task was given; do not record a zero.
 

@@ -12,6 +12,8 @@ Score evidence of unaided reasoning, not polish produced with assistance.
 
 Keep the highest hint level even if the final code is excellent.
 
+A correct first answer cannot be recorded as heavily assisted or walked through. Conventional AI assistance cannot be recorded as an independent outcome or as an unaided transfer score.
+
 A level-1 diagnostic question is a conceptual hint, so it costs the independent label. Only level 0 — task clarification and incidental syntax or toolchain help — preserves it. That is the same bar the transfer attempt uses in [session-protocol.md](session-protocol.md), so the two measures stay comparable.
 
 ## Explain-back score
@@ -50,7 +52,7 @@ Tempo: N min
 Capacidade: capability_id
 Fase: baseline | practice | retention_7d | retention_21d | final
 Política de ajuda: strict_unaided | standard_unaided | coached | conventional_ai
-Avaliador: independent | coach_scored
+Avaliador: coach_scored
 Pacote do desafio: package_id
 Evidência observada: ...
 Próximo alvo: ...
@@ -61,4 +63,4 @@ The transfer attempt belongs to the session that produced it and is always unaid
 
 Do not aggregate a single session into a percentage of “mastery.” For trends, compare repeated unaided transfer and delayed-retention attempts on the same skill family.
 
-Do not label an evaluator as independent unless it lacked the coaching transcript and used the frozen evaluator brief. Deterministic tests establish behavior for covered cases; they do not independently establish reasoning quality or complete correctness.
+Do not label an evaluator as independent. Nothing in this package isolates scoring from the coaching context; record `coach_scored`. Deterministic tests establish behavior for covered cases; they do not independently establish reasoning quality or complete correctness.

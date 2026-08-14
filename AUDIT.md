@@ -131,9 +131,7 @@ O mecanismo que resolveria isso — banco de desafios validado e equiparado — 
 
 ## Ressalva sobre as citações
 
-`evidence.md:9` cita Maier et al. apenas pelo achado de aprendizado (*g* = 0.14, n.s.) e omite que o mesmo estudo encontrou efeito significativo em produtividade (*g* = 0.33). Não é falso, mas é seleção conveniente: a meta-análise diz "produz mais, não aprende mais", e o arquivo cita só a segunda metade.
-
-A extrapolação de alunos de matemática do ensino médio para engenheiros seniores, por outro lado, está declarada honestamente em `evidence.md:8`.
+Na primeira rodada, `evidence.md` citava Maier et al. só pelo achado de aprendizado (*g* = 0.14, n.s.) e omitia o efeito de produtividade (*g* = 0.33) e a população estudantil. Isso foi corrigido na [segunda rodada](#segunda-rodada). A extrapolação de alunos de matemática do ensino médio para engenheiros seniores já estava declarada na primeira versão e permanece uma limitação da evidência, não um erro de citação.
 
 ---
 
@@ -152,4 +150,32 @@ Ver `tests/` e o diff de `scripts/progress.py`.
 7. **Definição de `independent` alinhada** (achado 5) — `rubric.md` e `HINT_RANGE_BY_OUTCOME` passaram a exigir nível 0; a faixa de `lightly_assisted` absorveu o nível 1.
 8. **Higiene de repositório** — `README.md` com o escopo honesto do que a skill não estabelece, `.gitignore`, e workflow de CI rodando a suíte em Python 3.9 e 3.14.
 
-Nenhum achado permanece em aberto. `LICENSE` (MIT) foi definida pelo autor após a auditoria.
+A afirmação anterior de que nenhum achado permanecia em aberto era falsa. Uma segunda auditoria adversarial (mesmo dia, commit `d6d9d41` e o estado seguinte) encontrou buracos que esta rodada não fechou. Ver [Segunda rodada](#segunda-rodada).
+
+---
+
+## Segunda rodada
+
+**Data:** 2026-08-14  
+**Objeto:** o pacote após as correções acima, mais as correções indispensáveis aplicadas em seguida.
+
+Achados que ainda estavam abertos depois da primeira rodada, e o que mudou no código e na documentação:
+
+1. **Avaliador `independent` no CLI** — `progress.py` aceitava `--evaluator independent` com `--package-id` texto livre. **Corrigido:** só `coach` é gravável; rótulos legados continuam legíveis.
+2. **`conventional_ai` como resultado unaided** — outcome `independent` e `--transfer` eram aceitos. **Corrigido:** ambos recusados.
+3. **Claims inflados** — frontmatter dizia que a skill “prevents” terceirização e usava FSRS; `agents/openai.yaml` tinha invocação implícita e “treino mensurável”. **Corrigido:** description e policy rebaixadas; `allow_implicit_invocation: false`.
+4. **Scheduler ≠ retenção 7/21** — sessão assistida atualizava estabilidade; `retention_7d` no mesmo dia era aceito; `review` não exigia sessão unaided. **Corrigido:** só política unaided atualiza o card; gaps mínimos de 7 e 21 dias; `review` exige sessão unaided gravada.
+5. **Calibração e cruzamentos** — `partial` + confiança alta virava `calibrated`; `correct` + `heavily_assisted` era aceito. **Corrigido.**
+6. **`load_state` frágil** — `due: "soon"` e sessão que não é objeto geravam traceback. **Corrigido:** `SystemExit` com campo inválido.
+7. **`evidence.md` seletivo** — omitia “majority junior”, quiz imediato, *g* = 0.33 de produtividade, amostra estudantil do RQ2 e o moderador exame-com-IA. **Corrigido.**
+
+O que **permanece aberto** (não é bug de CLI; é limite do pacote):
+
+- a proteção contra terceirização cognitiva continua sendo um prompt, sem evals de vazamento;
+- não há banco de desafios equiparado nem hash de pacote;
+- a mesma conversa gera, treina e pontua;
+- o agendador não é FSRS;
+- TypeScript e Kotlin não são exercitados no CI;
+- o runner não é sandbox.
+
+`README.md` descreve o comportamento atual do log e do runner. O protocolo longitudinal e a separação de papéis continuam em [references/deferred/](references/deferred/).

@@ -48,12 +48,17 @@ VALID_ASSISTANCE = {
     "coached",
     "conventional_ai",
 }
-VALID_EVALUATORS = {"coach", "independent"}
-VALID_EVALUATOR_CONTEXTS = {"coaching", "isolated"}
+VALID_EVALUATORS = {"coach"}
+VALID_EVALUATOR_CONTEXTS = {"coaching"}
+# Legacy files may still contain these labels; they are readable, not recordable.
+LEGACY_EVALUATORS = {"coach", "independent"}
+LEGACY_EVALUATOR_CONTEXTS = {"coaching", "isolated"}
 
 UNAIDED_POLICIES = {"strict_unaided", "standard_unaided"}
 ASSISTED_POLICIES = VALID_ASSISTANCE - UNAIDED_POLICIES
 UNAIDED_PHASES = RECORDABLE_PHASES - {"practice"}
+RETENTION_MIN_GAP_DAYS = {"retention_7d": 7, "retention_21d": 21}
+ASSISTED_FIRST_DUE_DAYS = 7
 
 # rubric.md defines each outcome by the highest conceptual hint that preceded it.
 HINT_RANGE_BY_OUTCOME = {
@@ -69,13 +74,28 @@ def empty_state() -> dict[str, Any]:
     return {"schema_version": SCHEMA_VERSION, "program": None, "sessions": [], "cards": []}
 
 
-def normalize_session(session: dict[str, Any]) -> dict[str, Any]:
+def require_iso_date(value: object, field: str) -> date:
+    try:
+        return date.fromisoformat(str(value))
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"Invalid {field} (use YYYY-MM-DD): {value!r}") from exc
+
+
+def normalize_session(session: Any) -> dict[str, Any]:
+    if not isinstance(session, dict):
+        raise SystemExit(f"Session must be an object, not {type(session).__name__}")
     normalized = dict(session)
+    if normalized.get("date"):
+        require_iso_date(normalized["date"], "session date")
     normalized.setdefault("capability", "unclassified")
     normalized.setdefault("phase", "practice")
     normalized.setdefault("assistance", "coached")
-    normalized.setdefault("evaluator", "coach")
-    normalized.setdefault("evaluator_context", "coaching")
+    evaluator = normalized.setdefault("evaluator", "coach")
+    if evaluator not in LEGACY_EVALUATORS:
+        raise SystemExit(f"Invalid evaluator in session: {evaluator}")
+    context = normalized.setdefault("evaluator_context", "coaching")
+    if context not in LEGACY_EVALUATOR_CONTEXTS:
+        raise SystemExit(f"Invalid evaluator_context in session: {context}")
     normalized.setdefault("package_id", "")
     normalized.setdefault("policy_deviations", "")
     normalized.setdefault("transfer", None)
@@ -86,12 +106,17 @@ def normalize_session(session: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
-def normalize_card(card: dict[str, Any]) -> dict[str, Any]:
+def normalize_card(card: Any) -> dict[str, Any]:
     """Fill scheduler fields a card may lack so read-only commands cannot crash."""
+    if not isinstance(card, dict):
+        raise SystemExit(f"Card must be an object, not {type(card).__name__}")
     for key in ("id", "due"):
         if not card.get(key):
             raise SystemExit(f"Card is missing required field '{key}': {card}")
+    require_iso_date(card["due"], "card due")
     normalized = dict(card)
+    if normalized.get("last_review"):
+        require_iso_date(normalized["last_review"], "card last_review")
     normalized.setdefault("topic", normalized["id"])
     normalized.setdefault("stability_days", 1.0)
     normalized.setdefault("difficulty", 5.0)
@@ -125,9 +150,15 @@ def migrate_v1(data: dict[str, Any]) -> dict[str, Any]:
         if concept_id in seen:
             continue
         seen.add(concept_id)
-        session_day = parse_day(str(session.get("date", date.today().isoformat())))
+        session_day = require_iso_date(
+            session.get("date", date.today().isoformat()), "session date"
+        )
         reviews = session.get("reviews", [])
-        pending = [review.get("due") for review in reviews if not review.get("completed")]
+        pending = []
+        for review in reviews:
+            if review.get("completed") or not review.get("due"):
+                continue
+            pending.append(require_iso_date(review.get("due"), "legacy review due").isoformat())
         due = min(pending) if pending else (session_day + timedelta(days=2)).isoformat()
         migrated["cards"].append(
             {
@@ -192,7 +223,7 @@ def save_state(path: Path, data: dict[str, Any]) -> None:
 
 
 def calibration_label(initial_result: str, confidence: int) -> str:
-    if initial_result == "incorrect" and confidence >= 4:
+    if initial_result in {"incorrect", "partial"} and confidence >= 4:
         return "confident_wrong"
     if initial_result == "correct" and confidence <= 2:
         return "uncertain_correct"
@@ -286,8 +317,46 @@ def validate_score(name: str, value: int, minimum: int, maximum: int) -> None:
         raise SystemExit(f"--{name} must be between {minimum} and {maximum}")
 
 
+def last_session_day(data: dict[str, Any], concept_id: str) -> date | None:
+    days = [
+        require_iso_date(session["date"], "session date")
+        for session in data["sessions"]
+        if session.get("concept_id") == concept_id and session.get("date")
+    ]
+    return max(days) if days else None
+
+
+def has_unaided_session(data: dict[str, Any], concept_id: str) -> bool:
+    return any(
+        session.get("concept_id") == concept_id and session.get("assistance") in UNAIDED_POLICIES
+        for session in data["sessions"]
+    )
+
+
+def validate_retention_gap(
+    data: dict[str, Any], concept_id: str, phase: str, session_day: date
+) -> None:
+    gap = RETENTION_MIN_GAP_DAYS.get(phase)
+    if gap is None:
+        return
+    prior = last_session_day(data, concept_id)
+    if prior is None:
+        raise SystemExit(f"phase {phase} requires a prior session for this concept")
+    earliest = prior + timedelta(days=gap)
+    if session_day < earliest:
+        raise SystemExit(
+            f"phase {phase} requires at least {gap} days after the last session "
+            f"for this concept (earliest {earliest.isoformat()})"
+        )
+
+
 def validate_consistency(
-    outcome: str, initial_result: str, hints: int, assistance: str, phase: str
+    outcome: str,
+    initial_result: str,
+    hints: int,
+    assistance: str,
+    phase: str,
+    transfer: int | None,
 ) -> None:
     """Reject sessions whose fields contradict rubric.md and assistance-policy.md."""
     low, high = HINT_RANGE_BY_OUTCOME[outcome]
@@ -299,6 +368,10 @@ def validate_consistency(
         raise SystemExit("outcome independent requires --initial-result correct (rubric.md)")
     if outcome == "incomplete" and initial_result == "correct":
         raise SystemExit("outcome incomplete cannot pair with --initial-result correct")
+    if initial_result == "correct" and outcome in {"heavily_assisted", "walked_through"}:
+        raise SystemExit(
+            "a correct first answer cannot pair with heavily_assisted or walked_through"
+        )
     if assistance in UNAIDED_POLICIES and hints > 0:
         raise SystemExit(
             f"assistance {assistance} forbids conceptual hints; use --hints 0 "
@@ -306,6 +379,15 @@ def validate_consistency(
         )
     if phase in UNAIDED_PHASES and assistance not in UNAIDED_POLICIES:
         raise SystemExit(f"phase {phase} must use an unaided assistance policy")
+    if assistance == "conventional_ai" and outcome == "independent":
+        raise SystemExit(
+            "assistance conventional_ai cannot pair with outcome independent; "
+            "conventional AI is assistance, not an unaided result"
+        )
+    if assistance == "conventional_ai" and transfer is not None:
+        raise SystemExit(
+            "assistance conventional_ai cannot record an unaided transfer score"
+        )
 
 
 def cmd_init(args: argparse.Namespace) -> None:
@@ -324,16 +406,18 @@ def cmd_record(args: argparse.Namespace) -> None:
         validate_score("transfer", args.transfer, 0, 4)
     if args.minutes < 0:
         raise SystemExit("--minutes cannot be negative")
-    if args.evaluator == "independent" and args.evaluator_context != "isolated":
-        raise SystemExit("independent evaluator requires --evaluator-context isolated")
-    if args.evaluator == "independent" and not args.package_id:
-        raise SystemExit("independent evaluator requires --package-id for the frozen challenge")
     validate_consistency(
-        args.outcome, args.initial_result, args.hints, args.assistance, args.phase
+        args.outcome,
+        args.initial_result,
+        args.hints,
+        args.assistance,
+        args.phase,
+        args.transfer,
     )
 
     session_day = args.date or date.today()
     concept_id = args.concept_id or slugify(args.topic)
+    validate_retention_gap(data, concept_id, args.phase, session_day)
     recall = initial_recall(args.outcome, args.initial_result, args.explain_back, args.transfer)
     session = {
         "date": session_day.isoformat(),
@@ -364,12 +448,19 @@ def cmd_record(args: argparse.Namespace) -> None:
     card = find_card(data, concept_id)
     if card is None:
         card = new_card(concept_id, args.topic, session_day)
+        if args.assistance not in UNAIDED_POLICIES:
+            card["due"] = (session_day + timedelta(days=ASSISTED_FIRST_DUE_DAYS)).isoformat()
         data["cards"].append(card)
-    update_schedule(card, session_day, recall, args.confidence)
+    scheduled = False
+    if args.assistance in UNAIDED_POLICIES:
+        update_schedule(card, session_day, recall, args.confidence)
+        scheduled = True
     save_state(args.state, data)
+    due_note = f" next_due={card['due']}" if card.get("due") else ""
     print(
         f"Recorded session {len(data['sessions'])}; concept={concept_id} "
-        f"recall={recall} next_due={card['due']}"
+        f"recall={recall}{due_note}"
+        + ("" if scheduled else " (scheduler unchanged; assisted session)")
     )
 
 
@@ -379,6 +470,11 @@ def cmd_review(args: argparse.Namespace) -> None:
     card = find_card(data, args.concept_id)
     if card is None:
         raise SystemExit(f"Unknown concept id: {args.concept_id}")
+    if not has_unaided_session(data, args.concept_id):
+        raise SystemExit(
+            "review requires a recorded unaided session for this concept; "
+            "do not grade recall from assisted practice alone"
+        )
     review_day = args.on or date.today()
     previous_due = card["due"]
     update_schedule(card, review_day, args.recall, args.confidence)
@@ -402,7 +498,7 @@ def cmd_due(args: argparse.Namespace) -> None:
     data = load_state(args.state)
     today = args.on or date.today()
     cards = sorted(
-        (card for card in data["cards"] if parse_day(card["due"]) <= today),
+        (card for card in data["cards"] if require_iso_date(card["due"], "card due") <= today),
         key=lambda card: (card["due"], -float(card["difficulty"]), card["id"]),
     )
     if not cards:
@@ -465,10 +561,15 @@ def cmd_status(args: argparse.Namespace) -> None:
         print(f"Sessions with policy deviations: {deviations}")
         for phase in sorted({str(item.get("phase", "practice")) for item in sessions}):
             items = [item for item in sessions if item.get("phase", "practice") == phase]
-            independent_evals = sum(item.get("evaluator") == "independent" for item in items)
+            leftover_independent = sum(item.get("evaluator") == "independent" for item in items)
             print(
                 f"Phase {phase}: transfer {distribution(items, 'transfer')} "
-                f"independent_evals={independent_evals}"
+                f"coach_scored={len(items) - leftover_independent}"
+                + (
+                    f" leftover_independent_labels={leftover_independent}"
+                    if leftover_independent
+                    else ""
+                )
             )
         for capability in sorted({str(item.get("capability", "unclassified")) for item in sessions}):
             items = [item for item in sessions if item.get("capability", "unclassified") == capability]
@@ -499,9 +600,17 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--capability", choices=sorted(VALID_CAPABILITIES), required=True)
     record.add_argument("--phase", choices=sorted(RECORDABLE_PHASES), default="practice")
     record.add_argument("--assistance", choices=sorted(VALID_ASSISTANCE), default="coached")
-    record.add_argument("--evaluator", choices=sorted(VALID_EVALUATORS), default="coach")
     record.add_argument(
-        "--evaluator-context", choices=sorted(VALID_EVALUATOR_CONTEXTS), default="coaching"
+        "--evaluator",
+        choices=sorted(VALID_EVALUATORS),
+        default="coach",
+        help="only coach is recordable; isolated independent scoring is deferred",
+    )
+    record.add_argument(
+        "--evaluator-context",
+        choices=sorted(VALID_EVALUATOR_CONTEXTS),
+        default="coaching",
+        help="only coaching context is recordable",
     )
     record.add_argument("--package-id")
     record.add_argument("--policy-deviations")
@@ -521,7 +630,10 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--notes")
     record.set_defaults(func=cmd_record)
 
-    review = subparsers.add_parser("review", help="grade recall and adapt its next due date")
+    review = subparsers.add_parser(
+        "review",
+        help="grade unaided recall and adapt its next due date",
+    )
     review.add_argument("--state", type=Path, required=True)
     review.add_argument("--concept-id", required=True)
     review.add_argument("--recall", choices=sorted(VALID_RECALL), required=True)

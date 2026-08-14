@@ -1,6 +1,6 @@
 ---
 name: train-coding-reasoning
-description: Train and evaluate programming reasoning through guarded, adaptive practice that prevents the AI from doing the learner's cognitive work, with explicit unaided-work rules, confidence calibration, FSRS-inspired spaced reviews, and deterministic local runners for Python, TypeScript, Java, and Kotlin. Use when the user asks for a coding challenge, mock interview, debugging exercise, code-reading drill, system-design drill, logic workout, spaced review, skill calibration, multiweek training plan, runnable assessment, or help avoiding AI dependency while programming. Also use when the user wants hints without an answer, wants to practice a language/framework/concept, or wants an objective assessment of unaided coding ability. Do not use for ordinary implementation requests where the user wants the work completed for them.
+description: Coach programming reasoning with a genuine-attempt gate, a progressive hint ladder, confidence before feedback, and delayed unaided checks. Optional local progress logging and a deterministic test runner for Python, TypeScript, Java, and Kotlin. Use when the user asks for a coding challenge, mock interview, debugging exercise, code-reading drill, system-design drill, logic workout, spaced review, skill calibration, multiweek training plan, runnable assessment, or help avoiding AI dependency while programming. Also use when the user wants hints without an answer or wants to practice a language/framework/concept. Do not use for ordinary implementation requests where the user wants the work completed for them. Do not claim independent evaluation, validated learning measurement, or official FSRS scheduling.
 ---
 
 # Train Coding Reasoning
@@ -111,7 +111,7 @@ A session demonstrates performance. It cannot validate the trainer, establish du
 - Freeze the task wording and success criteria before the attempt, and never revise them after seeing the result.
 - Never repair the answer you are scoring.
 - Do not claim causality, mastery, or retention from one learner's trend. Prefer "this session demonstrated" and "we do not yet know".
-- Run 7-day and 21-day retention checks as practice worth doing. Their scores are evidence about this learner's recall, not a measurement of the method.
+- Run 7-day and 21-day retention checks as practice worth doing. Their scores are evidence about this learner's recall, not a measurement of the method. If progress is being logged, `retention_7d` and `retention_21d` require a prior session for that concept and the stated gap.
 - If the learner asks for a controlled multiweek evaluation, say plainly that the package does not support one yet. The protocols in [references/deferred/](references/deferred/) are design input, not procedures to run.
 
 ## Measure learning honestly
@@ -135,19 +135,27 @@ Examples:
 ```bash
 python scripts/progress.py init --state .coding-reasoning/progress.json
 python scripts/progress.py record --state .coding-reasoning/progress.json \
-  --concept-id payment-idempotency-race --topic "payment idempotency" \
+  --date 2026-01-01 --concept-id payment-idempotency-race --topic "payment idempotency" \
   --exercise "race in idempotency guard" --mode debug \
   --capability invariants_failures --phase practice \
   --assistance coached --evaluator coach \
   --initial-result incorrect --confidence 4 --outcome lightly_assisted \
   --hints 2 --explain-back 3 --transfer 2 --minutes 28
-python scripts/progress.py due --state .coding-reasoning/progress.json
+python scripts/progress.py record --state .coding-reasoning/progress.json \
+  --date 2026-01-08 --concept-id payment-idempotency-race \
+  --topic "payment idempotency" --exercise "redelivery of the same key" \
+  --mode debug --capability invariants_failures --phase retention_7d \
+  --assistance standard_unaided --evaluator coach \
+  --initial-result correct --confidence 3 --outcome independent \
+  --hints 0 --explain-back 3 --minutes 20
 python scripts/progress.py review --state .coding-reasoning/progress.json \
-  --concept-id payment-idempotency-race --recall good --confidence 3
+  --concept-id payment-idempotency-race --recall good --confidence 3 \
+  --on 2026-01-08
+python scripts/progress.py due --state .coding-reasoning/progress.json
 python scripts/progress.py status --state .coding-reasoning/progress.json
 ```
 
-Record no secrets, proprietary code, or challenge solution. Store only metadata and short user-approved notes. Describe the scheduler as FSRS-inspired, not as official FSRS. Let observed recall, stability, difficulty, and confidence calibration determine the next review date.
+Record no secrets, proprietary code, or challenge solution. Store only metadata and short user-approved notes. Describe the scheduler as a local interval heuristic with arbitrary growth constants, never as FSRS. Only unaided sessions update stability; `review` requires a recorded unaided session for that concept. Retention phases `retention_7d` and `retention_21d` require that many days after the last session of the same concept. Do not record `review` after coached practice alone.
 
 Use `scripts/progress.py status` to compare phases and capability families. Metadata labels improve auditability; they do not by themselves make an evaluation independent.
 

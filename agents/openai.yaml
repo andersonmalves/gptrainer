@@ -1,9 +1,9 @@
 interface:
   display_name: Treino de Raciocínio em Código
-  short_description: Treino e avaliação de raciocínio sem terceirização
+  short_description: Coach de raciocínio em código com pistas graduais
   brand_color: '#2563EB'
-  default_prompt: Use $train-coding-reasoning para iniciar um treino mensurável de
-    programação sem revelar a solução.
+  default_prompt: Use $train-coding-reasoning para treinar raciocínio em programação
+    sem revelar a solução.
   icon_small: assets/icon.svg
   icon_large: assets/icon.svg
 policy:
@@ -12,4 +12,4 @@ policy:
   - codex
   - api
   - atlas
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false

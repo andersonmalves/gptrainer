@@ -97,7 +97,7 @@ Change at least two superficial features while preserving the underlying concept
 - local cache race to payment idempotency;
 - implementation task to code-reading diagnosis.
 
-Give no conceptual hints during the first transfer attempt. Clarify only wording. If transfer fails, record the result before coaching resumes.
+Give no conceptual hints during the first transfer attempt. Clarify only wording. If transfer fails, record the result before coaching resumes. Do not record a transfer score under `conventional_ai`.
 
 ## Close
 

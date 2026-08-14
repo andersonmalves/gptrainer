@@ -4,7 +4,7 @@ Use `scripts/runner.py` to compile and execute learner code against assistant-au
 
 ## Safety boundary
 
-The runner copies only the declared files into a disposable directory, uses a clean environment, applies a timeout, and applies basic resource limits where practical. It is **not a security sandbox** and does not block network access. Run untrusted or adversarial code inside a container or VM instead.
+The runner copies only the declared files into a disposable directory, uses a clean environment, applies a timeout, and applies basic resource limits where practical. It is **not a security sandbox**. It does not block network access, reads or writes outside the temp directory, or inherited `PATH` binaries. A timeout and a temp directory are not isolation. Run untrusted or adversarial code inside a container or VM instead.
 
 Never run tests against production credentials, services, databases, or writable project data.
 
