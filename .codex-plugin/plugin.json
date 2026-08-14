@@ -23,7 +23,7 @@
       "Use $kata to practice programming reasoning without revealing the solution."
     ],
     "brandColor": "#2563EB",
-    "composerIcon": "./assets/icon.svg",
-    "logo": "./assets/icon.svg"
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png"
   }
 }

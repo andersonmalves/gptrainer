@@ -17,6 +17,8 @@ class PluginSkillLayoutTest(unittest.TestCase):
             (ROOT / "scripts" / "runner.py", PLUGIN_SKILL / "scripts" / "runner.py"),
             (ROOT / "scripts" / "progress.py", PLUGIN_SKILL / "scripts" / "progress.py"),
             (ROOT / "assets" / "icon.svg", PLUGIN_SKILL / "assets" / "icon.svg"),
+            (ROOT / "assets" / "icon.png", PLUGIN_SKILL / "assets" / "icon.png"),
+            (ROOT / "assets" / "logo.png", PLUGIN_SKILL / "assets" / "logo.png"),
             (ROOT / "agents" / "openai.yaml", PLUGIN_SKILL / "agents" / "openai.yaml"),
             (
                 ROOT / "references" / "session-protocol.md",

@@ -131,8 +131,7 @@ Ainda pendente no score: não usar heading ou rótulo “independente”; não p
 ## Fora deste relatório
 
 - Submit aos diretórios (Claude community, OpenAI Plugins Directory).
-- PNG para `logo` / `composerIcon` (hoje é SVG).
 - Post no LinkedIn.
 - Alteração de git / release.
 
-Próximo passo de produto: repetir as checagens 3 e 5 nos dois CLIs; PNG; submit.
+Próximo passo de produto: repetir as checagens 3 e 5 nos dois CLIs; submit.

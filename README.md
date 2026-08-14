@@ -74,6 +74,7 @@ The multiweek evaluation protocol and the four-role separation live in [referenc
 | `scripts/sync-plugin-skill.sh` | Copies canonical root files into `skills/kata/` as real files |
 | `scripts/runner.py` | Deterministic test runner for Python, TypeScript, Java, Kotlin |
 | `scripts/progress.py` | Optional practice log with a local interval heuristic |
+| `assets/` | Glyph source (`icon.svg`) and 75×75 PNGs for Codex/OpenAI (`icon.png`, `logo.png`) |
 | `agents/openai.yaml` | Interface metadata; implicit invocation is off |
 | `tests/` | Test suite for the scripts and the plugin skill layout |
 

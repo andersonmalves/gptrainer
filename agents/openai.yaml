@@ -4,8 +4,8 @@ interface:
   brand_color: '#2563EB'
   default_prompt: Use $kata para treinar raciocínio em programação sem revelar a
     solução.
-  icon_small: assets/icon.svg
-  icon_large: assets/icon.svg
+  icon_small: assets/icon.png
+  icon_large: assets/logo.png
 policy:
   products:
   - chatgpt
