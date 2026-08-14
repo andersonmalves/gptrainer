@@ -284,6 +284,41 @@ class StatusReportTest(unittest.TestCase):
         self.assertIn("standard_unaided: n=2", output)
 
 
+class DeferredProgramTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.workspace = tempfile.TemporaryDirectory()
+        self.state = Path(self.workspace.name) / "progress.json"
+        self.addCleanup(self.workspace.cleanup)
+
+    def test_configure_program_is_no_longer_offered(self) -> None:
+        parser = progress.build_parser()
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["configure-program", "--state", str(self.state)])
+
+    def test_a_legacy_program_stays_readable(self) -> None:
+        self.state.write_text(
+            json.dumps(
+                {
+                    "schema_version": 3,
+                    "program": {
+                        "objective": "improve_baseline",
+                        "duration_weeks": 8,
+                        "baseline_policy": "standard_unaided",
+                    },
+                    "sessions": [],
+                    "cards": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+        parser = progress.build_parser()
+        args = parser.parse_args(["status", "--state", str(self.state)])
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            args.func(args)
+        self.assertIn("Program: improve_baseline", buffer.getvalue())
+
+
 class LabelTest(unittest.TestCase):
     def test_calibration_labels(self) -> None:
         self.assertEqual(progress.calibration_label("incorrect", 4), "confident_wrong")

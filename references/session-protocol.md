@@ -73,7 +73,7 @@ If the exercise runs in a repository:
 
 For a standalone Python, TypeScript, Java, or Kotlin exercise, read [runner.md](runner.md) and use the bundled deterministic runner when its toolchain is available.
 
-For a baseline, checkpoint, or final measurement, read [role-separation.md](role-separation.md), freeze the package before the attempt, and keep coaching context from the evaluator. If this is not possible, label the result `coach_scored`.
+For a baseline or delayed review, freeze the task wording and success criteria before the attempt and do not revise them after seeing the result. No score produced inside this conversation is independent; label it `coach_scored`.
 
 ## Explain-back
 
@@ -111,6 +111,6 @@ Report:
 - one demonstrated strength;
 - one next training target;
 - suggested delayed review date.
-- assistance policy, deviations, evaluator provenance, and challenge package ID for formal measurements.
+- assistance policy and any deviations from it.
 
 Avoid motivational filler and avoid claiming mastery.

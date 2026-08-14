@@ -1,6 +1,6 @@
 ---
 name: train-coding-reasoning
-description: Train and evaluate programming reasoning through guarded, adaptive practice that prevents the AI from doing the learner's cognitive work, with explicit unaided-work rules, confidence calibration, longitudinal measurement, independent evaluation, FSRS-inspired reviews, and deterministic local runners for Python, TypeScript, Java, and Kotlin. Use when the user asks for a coding challenge, mock interview, debugging exercise, code-reading drill, system-design drill, logic workout, spaced review, skill calibration, multiweek training plan, runnable assessment, or help avoiding AI dependency while programming. Also use when the user wants hints without an answer, wants to practice a language/framework/concept, or wants an objective assessment of unaided coding ability. Do not use for ordinary implementation requests where the user wants the work completed for them.
+description: Train and evaluate programming reasoning through guarded, adaptive practice that prevents the AI from doing the learner's cognitive work, with explicit unaided-work rules, confidence calibration, FSRS-inspired spaced reviews, and deterministic local runners for Python, TypeScript, Java, and Kotlin. Use when the user asks for a coding challenge, mock interview, debugging exercise, code-reading drill, system-design drill, logic workout, spaced review, skill calibration, multiweek training plan, runnable assessment, or help avoiding AI dependency while programming. Also use when the user wants hints without an answer, wants to practice a language/framework/concept, or wants an objective assessment of unaided coding ability. Do not use for ordinary implementation requests where the user wants the work completed for them.
 ---
 
 # Train Coding Reasoning
@@ -48,7 +48,7 @@ Infer the most useful mode from the request. Ask at most one short question if d
 - **Transfer**: Present a structurally related but novel problem after a coached exercise.
 - **Review**: Re-test a previously trained concept without showing the earlier solution.
 - **Status**: Summarize unaided performance, hint dependence, transfer, and due reviews if a progress file exists.
-- **Program**: Establish or continue a 6–8 week baseline/practice/checkpoint/final protocol.
+- **Program**: Plan or continue several weeks of practice with spaced retention checks. This is a training plan, not a controlled evaluation.
 
 Prefer challenges grounded in the current repository when the user is working in one, but isolate the exercise from production code. Cover real engineering reasoning—not only algorithm puzzles—including debugging, testing, refactoring, distributed systems, idempotency, state, concurrency, security boundaries, and performance.
 
@@ -65,7 +65,7 @@ Follow the detailed protocol in [references/session-protocol.md](references/sess
 7. Test the result objectively. Separate public examples from withheld tests when practical.
 8. Require an explain-back: why it works, complexity/tradeoffs, and where it can fail.
 9. Give a short transfer task with changed surface details. Remove hints for this task.
-10. Score only after the transfer attempt, using [references/rubric.md](references/rubric.md). For a formal checkpoint, use an evaluator isolated from the coaching context.
+10. Score only after the transfer attempt, using [references/rubric.md](references/rubric.md), and label the score `coach_scored`.
 11. Schedule the concept adaptively from observed recall and confidence. Do not claim long-term learning from a single session.
 
 When repository tools are available, inspect and run tests as needed. Creating a disposable scaffold or tests is allowed; modifying the learner's answer to make it pass is not. Clearly label any assistant-authored fixture. For standalone Python, TypeScript, Java, or Kotlin exercises, read [references/runner.md](references/runner.md) and use `scripts/runner.py`. Prefer an existing project test command when it already provides an equivalent deterministic harness.
@@ -103,26 +103,16 @@ Base adaptation on demonstrated unaided performance, not confidence alone.
 
 Use the challenge matrix and examples in [references/challenge-design.md](references/challenge-design.md) when generating exercises.
 
-## Run longitudinal evaluation when effectiveness matters
+## Know what a session can establish
 
-A session can demonstrate performance but cannot validate the trainer. When the learner asks whether the method works for them, proposes calibration, or starts a training program, read [references/longitudinal-evaluation.md](references/longitudinal-evaluation.md).
+A session demonstrates performance. It cannot validate the trainer, establish durable learning, or produce an independent score.
 
-- Define the objective as `recover`, `prevent_decline`, or `improve_baseline`.
-- Use a 6–8 week program with baseline, immediate transfer, 7-day retention, 21-day retention, and final measurement.
-- Keep the capability mix, assistance policy, time limits, and scoring rules stable enough for comparison.
-- Prefer three conditions when feasible: no AI, conventional AI, and guarded trainer. Do not claim causality from a single-person uncontrolled trend.
-- Treat reduced hint dependence, better unaided transfer/retention, improved debugging accuracy, and better confidence calibration as outcomes. Track time cost separately.
-
-## Separate generation, coaching, and evaluation
-
-Read [references/role-separation.md](references/role-separation.md) before a baseline, checkpoint, or final assessment.
-
-- Freeze the challenge package and rubric before the learner starts.
-- Keep withheld tests, expected failure classes, and scoring anchors outside the coaching context.
-- Let the coach see the learner prompt and public evidence, not the evaluator key.
-- Use a separate conversation, agent, or human evaluator with no coaching transcript when available.
-- If isolation is unavailable, label the result `coach_scored`, disclose the contamination risk, and do not call it independent.
-- Never let the evaluator repair the answer it scores.
+- Label every score this skill produces `coach_scored`. Nothing in the package isolates an evaluator from the coaching context, so no result here is independent.
+- Freeze the task wording and success criteria before the attempt, and never revise them after seeing the result.
+- Never repair the answer you are scoring.
+- Do not claim causality, mastery, or retention from one learner's trend. Prefer "this session demonstrated" and "we do not yet know".
+- Run 7-day and 21-day retention checks as practice worth doing. Their scores are evidence about this learner's recall, not a measurement of the method.
+- If the learner asks for a controlled multiweek evaluation, say plainly that the package does not support one yet. The protocols in [references/deferred/](references/deferred/) are design input, not procedures to run.
 
 ## Measure learning honestly
 

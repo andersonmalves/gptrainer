@@ -50,6 +50,7 @@ O próprio arquivo admite (`role-separation.md:31`) que a opção realista — p
 `future-improvements.md:8` reconhece que não existem evals para vazamento de resposta, qualidade de pista, sycophancy ou consistência de pontuação. A promessa central da skill — impedir que a IA faça o trabalho cognitivo — não é testada por nada dentro do pacote.
 
 **Severidade:** alta. É uma limitação de arquitetura, não um bug.
+**Status:** endereçado por rebaixamento. `role-separation.md` foi movido para `references/deferred/` com cabeçalho declarando que não é capacidade atual; a skill deixou de mandar segui-lo e passou a instruir que todo score produzido nela é `coach_scored`. A `description` do frontmatter não anuncia mais "independent evaluation".
 
 ### 2. `progress.py` grava dados que se contradizem
 
@@ -117,6 +118,7 @@ O programa propõe 2–3 sessões/semana por 6–8 semanas sobre 5 capacidades: 
 O mecanismo que resolveria isso — banco de desafios validado e equiparado — está em `future-improvements.md:5` como backlog, com a admissão de que "comparações longitudinais só são tão críveis quanto a qualidade e equivalência das tarefas". O pacote sabe que sua fundação não existe.
 
 **Severidade:** alta para as conclusões, baixa para o uso diário como treino.
+**Status:** endereçado por rebaixamento. `longitudinal-evaluation.md` foi para `references/deferred/` e o subcomando `configure-program` foi removido. Os checks de retenção de 7 e 21 dias continuam — são prática legítima; o que saiu foi a moldura que os apresentava como medição controlada.
 
 ### 8. Zero testes
 
@@ -145,8 +147,9 @@ Ver `tests/` e o diff de `scripts/progress.py`.
 4. **Suíte de testes** — `tests/test_progress.py` e `tests/test_runner.py`, stdlib apenas, executadas com `python3 -m unittest discover -s tests`.
 5. **Transferência deixou de ser fase** (achado 4) — schema 4. `RECORDABLE_PHASES` exclui `immediate_transfer`; `--transfer` é opcional e não deve receber zero quando não houve tarefa; `--transfer-policy` registra sob qual política sem ajuda a transferência ocorreu; `migrate_v3` rotula scores antigos como `standard_unaided` e preserva sessões gravadas na fase aposentada.
 
+6. **Aparato longitudinal rebaixado** (achados 1 e 7) — `longitudinal-evaluation.md` e `role-separation.md` movidos para `references/deferred/`, cada um com cabeçalho dizendo por que está adiado e o que precisaria existir antes; `configure-program` removido; `future-improvements.md` ganhou os dois itens com a dependência entre eles; `SKILL.md` trocou as duas seções por uma que declara o que uma sessão consegue e o que não consegue estabelecer. Nenhum conteúdo foi apagado.
+
 ## Deferido — exige decisão
 
-- **Achado 1 e 7** (aparato longitudinal): a recomendação da auditoria é rebaixar `longitudinal-evaluation.md`, `role-separation.md` e o subcomando `configure-program` a backlog explícito, porque prometem uma independência que a arquitetura não entrega e um poder estatístico que o n não sustenta. É remoção de conteúdo — decisão do autor.
 - **Achado 5**: alinhar a definição de `independent` entre `rubric.md` e `session-protocol.md`.
 - Higiene de repositório: `README.md`, `LICENSE`, CI.

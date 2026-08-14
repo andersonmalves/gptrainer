@@ -1,5 +1,11 @@
 # Longitudinal evaluation
 
+> **Deferred — not a current capability.** Nothing in the package implements or enforces this protocol, and the skill does not instruct the coach to run it. Kept as design input for [future-improvements.md](../future-improvements.md).
+>
+> **Why it is deferred.** Two sessions per week over eight weeks across five capabilities yields roughly three to five observations per capability, scored by the coach on an ordinal 0–4 scale. That cannot support the threshold decision rules below: ordinary variation between non-equivalent tasks dominates any effect that size, and practice effects and regression to the mean have no control here. Difficulty equivalence across tasks depends on the validated challenge bank, which does not exist yet.
+>
+> **What would have to exist first.** The validated challenge bank, a scoring path isolated from the coaching context, and a pre-registered analysis that reports uncertainty rather than a threshold verdict.
+
 Use this protocol to estimate whether the trainer helps this learner. It is an N-of-1 evaluation unless multiple participants are enrolled; it can guide decisions but does not establish general efficacy.
 
 ## Define the claim

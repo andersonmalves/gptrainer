@@ -1,5 +1,11 @@
 # Role separation
 
+> **Deferred — not a current capability.** Nothing in the package implements or enforces this separation, and the skill does not instruct the coach to follow it. Kept as design input for [future-improvements.md](../future-improvements.md).
+>
+> **Why it is deferred.** No script computes or verifies the package hash this document requires, so recorded provenance is unverifiable. A solo learner has no isolated evaluator available, which sends every real result to option 3 below — the option this document itself says must not be called independent. An apparatus whose realistic outcome is always `coach_scored` adds ceremony, not rigor.
+>
+> **What would have to exist first.** Package freezing with a content hash, and a scoring path that runs outside the coaching context.
+
 Use four roles and keep their visibility distinct.
 
 | Role | May see | Must not do |

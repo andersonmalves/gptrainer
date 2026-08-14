@@ -50,7 +50,6 @@ VALID_ASSISTANCE = {
 }
 VALID_EVALUATORS = {"coach", "independent"}
 VALID_EVALUATOR_CONTEXTS = {"coaching", "isolated"}
-VALID_OBJECTIVES = {"recover", "prevent_decline", "improve_baseline"}
 
 UNAIDED_POLICIES = {"strict_unaided", "standard_unaided"}
 ASSISTED_POLICIES = VALID_ASSISTANCE - UNAIDED_POLICIES
@@ -316,32 +315,6 @@ def cmd_init(args: argparse.Namespace) -> None:
     print(f"Initialized {args.state}")
 
 
-def cmd_configure(args: argparse.Namespace) -> None:
-    data = load_state(args.state, allow_missing=True)
-    if not 6 <= args.duration_weeks <= 8:
-        raise SystemExit("--duration-weeks must be between 6 and 8")
-    capabilities = args.capability or [
-        "debugging_diagnosis",
-        "code_reading",
-        "decomposition_modeling",
-        "invariants_failures",
-        "ai_code_review",
-    ]
-    data["program"] = {
-        "objective": args.objective,
-        "duration_weeks": args.duration_weeks,
-        "started_on": (args.started_on or date.today()).isoformat(),
-        "baseline_policy": args.baseline_policy,
-        "capabilities": capabilities,
-        "success_rule": args.success_rule,
-    }
-    save_state(args.state, data)
-    print(
-        f"Configured {args.duration_weeks}-week program objective={args.objective} "
-        f"capabilities={','.join(capabilities)}"
-    )
-
-
 def cmd_record(args: argparse.Namespace) -> None:
     data = load_state(args.state, allow_missing=True)
     validate_score("hints", args.hints, 0, 6)
@@ -466,7 +439,7 @@ def cmd_status(args: argparse.Namespace) -> None:
             f"baseline={program['baseline_policy']}"
         )
     if sessions:
-        # longitudinal-evaluation.md forbids pooling assisted and unaided attempts.
+        # rubric.md forbids pooling assisted and unaided attempts into one number.
         for label, policies in (("Unaided", UNAIDED_POLICIES), ("Assisted", ASSISTED_POLICIES)):
             items = [item for item in sessions if item.get("assistance") in policies]
             if not items:
@@ -515,22 +488,6 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--state", type=Path, required=True)
     init.add_argument("--force", action="store_true")
     init.set_defaults(func=cmd_init)
-
-    configure = subparsers.add_parser(
-        "configure-program", help="define a 6-8 week longitudinal evaluation program"
-    )
-    configure.add_argument("--state", type=Path, required=True)
-    configure.add_argument("--objective", choices=sorted(VALID_OBJECTIVES), required=True)
-    configure.add_argument("--duration-weeks", type=int, default=8)
-    configure.add_argument("--started-on", type=parse_day)
-    configure.add_argument(
-        "--baseline-policy",
-        choices=["strict_unaided", "standard_unaided"],
-        default="standard_unaided",
-    )
-    configure.add_argument("--capability", action="append", choices=sorted(VALID_CAPABILITIES))
-    configure.add_argument("--success-rule", required=True)
-    configure.set_defaults(func=cmd_configure)
 
     record = subparsers.add_parser("record", help="record a session and schedule its concept")
     record.add_argument("--state", type=Path, required=True)
