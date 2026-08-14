@@ -1,10 +1,49 @@
-# train-coding-reasoning
+# Kata
 
-A coaching skill that asks you to attempt the reasoning before it helps. It releases hints one rung at a time, asks for confidence before revealing correctness, and re-tests the concept on a changed surface once the hints are gone.
+A coaching skill that asks you to attempt the reasoning before it helps. It releases hints one rung at a time, asks for confidence before revealing correctness, and re-tests the concept on a changed surface once the hints are gone. Katas here are engineering reasoning — debugging, invariants, design — not puzzle drills.
 
 Assisted completion and learning are different things. See [references/evidence.md](references/evidence.md) for the studies behind that premise, including their populations and limits.
 
 This package is a practice protocol and an optional diary. It is not a psychometric instrument and not a controlled evaluation.
+
+Compatible with Claude Code and Codex.
+
+## How a session works
+
+The coach does not implement the core answer. It waits for an observable attempt, releases one hint rung at a time, asks for confidence before revealing correctness, and then re-tests the same idea on a changed surface with hints removed. The detailed protocol is in [references/session-protocol.md](references/session-protocol.md). The studies behind each step, and the limits of those studies, are in [references/evidence.md](references/evidence.md).
+
+```mermaid
+flowchart TD
+  A["Contract: assistance policy, capability, timebox"] --> B["Prompt without the solution"]
+  B --> C["Observable attempt"]
+  C --> D{"Reasoning exposed?"}
+  D -- No --> C
+  D -- Yes --> E["One hint-ladder rung"]
+  E --> F["Another attempt"]
+  F --> G{"Still blocked?"}
+  G -- Yes --> E
+  G -- No --> H["Confidence 1-5"]
+  H --> I["Tests or criteria; withheld tests last"]
+  I --> J["Explain-back"]
+  J --> K["Transfer with no conceptual hints"]
+  K --> L["Score labelled coach_scored"]
+  L --> M["Unaided review after 7d / 21d"]
+```
+
+This skill is **dedicated practice**. It is not a “learn while the model ships the feature” mode. For ordinary implementation work, do not invoke it.
+
+Assisted completion is not learning. A session can record three different outcomes; none of them implies the next:
+
+```mermaid
+flowchart LR
+  subgraph Measures["What a session can record"]
+    P["Assisted completion"]
+    T["Immediate unaided transfer"]
+    R["Unaided retention at 7d / 21d"]
+  end
+  P -.->|"does not imply"| T
+  T -.->|"does not imply"| R
+```
 
 ## What it does not establish
 
@@ -30,7 +69,7 @@ The multiweek evaluation protocol and the four-role separation live in [referenc
 
 ## Use
 
-Claude Code discovers skills placed in `~/.claude/skills/<name>/` (personal) or `.claude/skills/<name>/` (project), with `SKILL.md` at the root of that directory.
+Install as `kata`. Claude Code discovers skills placed in `~/.claude/skills/kata/` (personal) or `.claude/skills/kata/` (project), with `SKILL.md` at the root of that directory. Codex uses the interface metadata in `agents/openai.yaml`. Invoke with `/kata` or “me passa um kata”.
 
 ### Runner
 
@@ -96,6 +135,19 @@ python3 -m unittest discover -s tests
 ```
 
 Requires Python 3.9 or newer; verified on 3.9 and 3.14.
+
+## References and related work
+
+Guardrails and scoring language come from [references/evidence.md](references/evidence.md). That file maps each protocol piece to a citation and states what the citation does not cover.
+
+Design sources, not efficacy evidence:
+
+| Source | Borrowed | Not copied |
+|---|---|---|
+| [drill-me](https://github.com/timini/drill-me) | Confidence before feedback; local concept memory; delayed review | Official FSRS; quiz-only tutoring |
+| [swe-interview-coach](https://github.com/kirilxd/swe-interview-coach) | Learner-owned solution file; local runner; rubric | Interview-only scope; Python-only runner |
+| [Algo Sensei](https://github.com/karanb192/algo-sensei) | Hint ladder; withhold the solution | DSA as the core; no runner |
+| [Learning output style](https://code.claude.com/docs/en/output-styles) | Adjacent product for shipping work | Not a mode of this skill |
 
 ## License
 

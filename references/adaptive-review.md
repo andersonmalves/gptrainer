@@ -53,6 +53,8 @@ Do not let the learner choose the rating based only on how the review felt.
 - Low-confidence correct recall receives a smaller interval increase.
 - Intervals are capped at 365 days.
 
+Concept cards do not distinguish knowledge, mental model, procedure, judgment, transfer, and execution. The scheduler treats them as one interval. That is a known limit, not a claim that all of those are the same kind of memory. Sitzman, Rhodes, and Tauber (2014) also caution against treating confidence as a validated spacing signal; confident-wrong → next day remains a heuristic. See [evidence.md](evidence.md).
+
 The state contains no solution text. Use stable concept IDs such as `payment-idempotency-race`, not one ID per exercise wording.
 
 ## Commands
