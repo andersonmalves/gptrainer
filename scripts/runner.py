@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import signal
 import shutil
 import subprocess
@@ -70,6 +71,11 @@ def resource_limiter(timeout: int, memory_mb: int, limit_address_space: bool):
         return None
 
     def limit() -> None:
+        try:
+            os.setsid()
+        except OSError:
+            pass
+
         def apply(kind: int, soft: int, hard: int) -> None:
             try:
                 _, current_hard = resource.getrlimit(kind)
@@ -86,7 +92,7 @@ def resource_limiter(timeout: int, memory_mb: int, limit_address_space: bool):
             apply(resource.RLIMIT_AS, memory_bytes, memory_bytes)
         apply(resource.RLIMIT_FSIZE, 16 * 1024 * 1024, 16 * 1024 * 1024)
         apply(resource.RLIMIT_NOFILE, 64, 64)
-        if hasattr(resource, "RLIMIT_NPROC"):
+        if hasattr(resource, "RLIMIT_NPROC") and sys.platform != "darwin":
             apply(resource.RLIMIT_NPROC, 32, 32)
 
     return limit
@@ -100,43 +106,65 @@ def run_process(
     apply_limits: bool,
     limit_address_space: bool = False,
 ) -> Result:
+    preexec = (
+        resource_limiter(timeout, memory_mb, limit_address_space)
+        if apply_limits
+        else (getattr(os, "setsid", None) if os.name == "posix" else None)
+    )
     try:
-        completed = subprocess.run(
+        proc = subprocess.Popen(
             list(command),
             cwd=workspace,
             env=clean_environment(workspace),
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout + 1,
-            check=False,
-            preexec_fn=(
-                resource_limiter(timeout, memory_mb, limit_address_space)
-                if apply_limits
-                else None
-            ),
+            preexec_fn=preexec,
         )
-    except subprocess.TimeoutExpired as exc:
-        stdout = exc.stdout.decode(errors="replace") if isinstance(exc.stdout, bytes) else exc.stdout
-        stderr = exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
-        return Result(
-            status="timeout",
-            phase="run",
-            returncode=None,
-            stdout=stdout or "",
-            stderr=stderr or f"Timed out after {timeout} seconds",
-        )
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout + 1)
+        except subprocess.TimeoutExpired:
+            if os.name == "posix":
+                try:
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                except OSError:
+                    proc.kill()
+            else:
+                proc.kill()
+            try:
+                stdout, stderr = proc.communicate(timeout=1)
+            except (subprocess.TimeoutExpired, ValueError):
+                stdout, stderr = "", ""
+            return Result(
+                status="timeout",
+                phase="run",
+                returncode=None,
+                stdout=stdout or "",
+                stderr=stderr or f"Timed out after {timeout} seconds",
+            )
+        except Exception:
+            if os.name == "posix":
+                try:
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                except OSError:
+                    proc.kill()
+            else:
+                proc.kill()
+            proc.wait()
+            raise
     except OSError as exc:
         return Result(status="error", phase="run", returncode=None, stdout="", stderr=str(exc))
+
     cpu_signals = {-getattr(signal, "SIGXCPU", signal.SIGTERM)}
-    status = "passed" if completed.returncode == 0 else "failed"
-    if completed.returncode in cpu_signals:
+    status = "passed" if proc.returncode == 0 else "failed"
+    if proc.returncode in cpu_signals:
         status = "timeout"
     return Result(
         status=status,
         phase="run",
-        returncode=completed.returncode,
-        stdout=completed.stdout,
-        stderr=completed.stderr,
+        returncode=proc.returncode,
+        stdout=stdout,
+        stderr=stderr,
     )
 
 
@@ -239,10 +267,17 @@ def build_commands(
     )
 
 
+ANSI_PATTERN = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def strip_ansi(text: str) -> str:
+    return ANSI_PATTERN.sub("", text)
+
+
 def sanitize(result: Result, workspace: Path) -> Result:
     marker = str(workspace)
-    result.stdout = result.stdout.replace(marker, "<workspace>")
-    result.stderr = result.stderr.replace(marker, "<workspace>")
+    result.stdout = strip_ansi(result.stdout.replace(marker, "<workspace>"))
+    result.stderr = strip_ansi(result.stderr.replace(marker, "<workspace>"))
     return result
 
 

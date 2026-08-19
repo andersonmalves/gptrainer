@@ -75,6 +75,28 @@ class PythonRunnerTest(unittest.TestCase):
         result = self.run_challenge(FAILING_TEST)
         self.assertNotIn("coding-reasoning-", result.stdout)
 
+    def test_ansi_escapes_are_stripped(self) -> None:
+        ansi_test = 'print("\\033[31mRed Text\\033[0m")\nassert True\n'
+        result = self.run_challenge(ansi_test, "--json")
+        self.assertEqual(result.returncode, 0)
+        payload = json.loads(result.stdout)
+        self.assertNotIn("\033[", payload["stdout"])
+        self.assertIn("Red Text", payload["stdout"])
+
+    def test_sleep_timeout_is_stopped(self) -> None:
+        result = self.run_challenge("import time\ntime.sleep(30)\n", "--timeout", "1")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("status=timeout", result.stdout)
+
+    def test_child_process_timeout_is_stopped(self) -> None:
+        child_test = (
+            "import subprocess, sys\n"
+            "subprocess.run([sys.executable, '-c', 'import time; time.sleep(30)'])\n"
+        )
+        result = self.run_challenge(child_test, "--timeout", "1")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("status=timeout", result.stdout)
+
 
 class ArgumentValidationTest(unittest.TestCase):
     def run_runner(self, *argv: str) -> subprocess.CompletedProcess:

@@ -13,22 +13,20 @@ PLUGIN_SKILL = ROOT / "skills" / "kata"
 
 class PluginSkillLayoutTest(unittest.TestCase):
     def test_plugin_skill_files_are_real_copies(self) -> None:
-        pairs = [
-            (ROOT / "SKILL.md", PLUGIN_SKILL / "SKILL.md"),
-            (ROOT / "scripts" / "runner.py", PLUGIN_SKILL / "scripts" / "runner.py"),
-            (ROOT / "scripts" / "progress.py", PLUGIN_SKILL / "scripts" / "progress.py"),
-            (ROOT / "assets" / "icon.svg", PLUGIN_SKILL / "assets" / "icon.svg"),
-            (ROOT / "assets" / "icon.png", PLUGIN_SKILL / "assets" / "icon.png"),
-            (ROOT / "assets" / "logo.png", PLUGIN_SKILL / "assets" / "logo.png"),
-            (ROOT / "agents" / "openai.yaml", PLUGIN_SKILL / "agents" / "openai.yaml"),
-            (
-                ROOT / "references" / "session-protocol.md",
-                PLUGIN_SKILL / "references" / "session-protocol.md",
-            ),
+        canonical_files = [
+            ROOT / "SKILL.md",
+            ROOT / "scripts" / "runner.py",
+            ROOT / "scripts" / "progress.py",
+            *(p for p in (ROOT / "assets").rglob("*") if p.is_file() and not p.name.startswith(".")),
+            *(p for p in (ROOT / "agents").rglob("*") if p.is_file() and not p.name.startswith(".")),
+            *(p for p in (ROOT / "references").rglob("*") if p.is_file() and not p.name.startswith(".")),
         ]
-        for canonical, packed in pairs:
-            with self.subTest(packed=str(packed.relative_to(ROOT))):
-                self.assertTrue(packed.is_file(), f"missing {packed}")
+        self.assertGreater(len(canonical_files), 10)
+        for canonical in canonical_files:
+            rel = canonical.relative_to(ROOT)
+            packed = PLUGIN_SKILL / rel
+            with self.subTest(packed=str(rel)):
+                self.assertTrue(packed.is_file(), f"missing {packed}; run scripts/sync-plugin-skill.sh")
                 self.assertFalse(packed.is_symlink(), f"symlink would be dropped: {packed}")
                 self.assertTrue(
                     filecmp.cmp(canonical, packed, shallow=False),
