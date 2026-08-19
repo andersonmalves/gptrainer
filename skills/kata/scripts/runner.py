@@ -92,8 +92,6 @@ def resource_limiter(timeout: int, memory_mb: int, limit_address_space: bool):
             apply(resource.RLIMIT_AS, memory_bytes, memory_bytes)
         apply(resource.RLIMIT_FSIZE, 16 * 1024 * 1024, 16 * 1024 * 1024)
         apply(resource.RLIMIT_NOFILE, 64, 64)
-        if hasattr(resource, "RLIMIT_NPROC") and sys.platform != "darwin":
-            apply(resource.RLIMIT_NPROC, 32, 32)
 
     return limit
 
